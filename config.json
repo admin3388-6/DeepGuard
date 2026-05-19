@@ -1,0 +1,53 @@
+{
+  "log_channel_id": "1506420345387876402",
+  "control_channel_id": "1506420018890543114",
+  "ignored_channels": [
+    "1504557542825529374",
+    "1504556508103577743",
+    "1497648145666932826",
+    "1497621523639570524"
+  ],
+  "roles": {
+    "supreme": [
+      "1505681669418647594",
+      "1497618182763053096"
+    ],
+    "owner": [
+      "1497646073060003982"
+    ],
+    "admin": [
+      "1504544220030173265",
+      "1504575260563865681"
+    ]
+  },
+  "allowed_domains": [
+    "youtube.com",
+    "youtu.be",
+    "facebook.com",
+    "fb.com",
+    "twitter.com",
+    "x.com",
+    "instagram.com",
+    "tiktok.com",
+    "linkedin.com",
+    "twitch.tv",
+    "discordapp.com",
+    "discord.com",
+    "cdn.discordapp.com",
+    "media.discordapp.net",
+    "warera.com",
+    "warerastats.io"
+  ],
+  "url_shorteners": [
+    "bit.ly",
+    "goo.gl",
+    "tinyurl.com",
+    "t.co",
+    "short.link",
+    "ow.ly",
+    "buff.ly",
+    "is.gd",
+    "short.io",
+    "rebrand.ly"
+  ]
+}
