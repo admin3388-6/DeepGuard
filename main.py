@@ -1,6 +1,6 @@
-import nextcord
-from nextcord.ext import commands
-from nextcord import Interaction, SlashOption
+import discord
+from discord.ext import commands
+from discord import Interaction, SlashOption
 import json
 import re
 import os
