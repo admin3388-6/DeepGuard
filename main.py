@@ -1,27 +1,39 @@
 import traceback
 import sys
+import os
+
+print("[DeepGuard] Starting initialization...")
 
 try:
+    print("[DeepGuard] Importing discord.py...")
     import discord
     from discord.ext import commands
     from discord import app_commands
+    print(f"[DeepGuard] discord.py version: {discord.__version__}")
+    
+    print("[DeepGuard] Importing other modules...")
     import json
     import re
-    import os
     from datetime import datetime, timedelta
     from collections import defaultdict, deque
 
     # ==================== التكوين ====================
+    print("[DeepGuard] Loading config.json...")
     with open("config.json", "r", encoding="utf-8") as f:
         cfg = json.load(f)
+    print("[DeepGuard] config.json loaded successfully")
 
+    print("[DeepGuard] Loading badwords.json...")
     with open("badwords.json", "r", encoding="utf-8") as f:
         BAD_WORDS = set(json.load(f))
+    print(f"[DeepGuard] Loaded {len(BAD_WORDS)} bad words")
 
     # ==================== الثوابت ====================
+    print("[DeepGuard] Reading environment variables...")
     TOKEN = os.getenv("DEEPGUARD_TOKEN")
     if not TOKEN:
         raise ValueError("❌ متغير البيئة DEEPGUARD_TOKEN غير محدد!")
+    print(f"[DeepGuard] TOKEN found: {TOKEN[:10]}...")
 
     LOG_CHANNEL_ID = int(cfg["log_channel_id"])
     CONTROL_CHANNEL_ID = int(cfg["control_channel_id"])
@@ -137,10 +149,12 @@ try:
             print(f"[Punish Error] timeout: {e}")
 
     # ==================== البوت ====================
+    print("[DeepGuard] Setting up intents...")
     intents = discord.Intents.default()
     intents.message_content = True
     intents.members = True
 
+    print("[DeepGuard] Creating bot instance...")
     bot = commands.Bot(
         command_prefix="!",
         intents=intents,
@@ -150,7 +164,7 @@ try:
 
     @bot.event
     async def on_ready():
-        print(f"[DeepGuard] Logged in as {bot.user}")
+        print(f"[DeepGuard] ✅ Logged in as {bot.user}")
         await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="over the server"))
         try:
             synced = await bot.tree.sync()
@@ -463,6 +477,7 @@ try:
         await interaction.response.send_message(embed=emb, ephemeral=True)
 
     # ==================== التشغيل ====================
+    print("[DeepGuard] Starting bot.run()...")
     if __name__ == "__main__":
         bot.run(TOKEN)
 
