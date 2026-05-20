@@ -8,11 +8,51 @@ import asyncio
 from collections import defaultdict
 from datetime import timedelta
 import time
+import socket
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from dotenv import load_dotenv
+
+# ==========================================
+# 🔴 1. الإصلاح الجذري لمشكلة تجمد الاتصال (إجبار IPv4)
+# ==========================================
+# نقوم بتعديل الطريقة التي يبحث بها بايثون عن العناوين لنجبره على IPv4 فقط
+old_getaddrinfo = socket.getaddrinfo
+def new_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    return old_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+socket.getaddrinfo = new_getaddrinfo
+# ==========================================
+
+# ==========================================
+# 🌐 2. خادم الويب الشبح (لإرضاء Render و UptimeRobot)
+# ==========================================
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html; charset=utf-8')
+        self.end_headers()
+        self.wfile.write("📡 DeepGuard Bot is Active and Secure!".encode('utf-8'))
+        
+    def log_message(self, format, *args):
+        pass # إخفاء سجلات الزيارات لكي لا يمتلئ الكونسول
+
+def run_keep_alive():
+    # Render يعطينا البورت تلقائياً، وإلا نستخدم 10000
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+    print(f"[SYSTEM] Web Server is active on port {port} (Ready for Render & UptimeRobot)")
+    server.serve_forever()
+
+# تشغيل الخادم في مسار جانبي (Thread) لكي لا يوقف عمل البوت
+threading.Thread(target=run_keep_alive, daemon=True).start()
+# ==========================================
 
 # تحميل المتغيرات البيئية (لحماية التوكن)
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
+
+if not TOKEN:
+    print("[CRITICAL] لم يتم العثور على توكن البوت! تأكد من إعدادات Render.")
 
 # ==========================================
 # الإعدادات الأساسية (القنوات والرتب)
@@ -45,13 +85,9 @@ SHORTENER_DOMAINS = [
     "bit.ly", "goo.gl", "tinyurl.com", "t.co", "cutt.ly", "is.gd", "buff.ly"
 ]
 
-# تعبير نمطي لاستخراج الروابط من النصوص
 URL_REGEX = re.compile(r'(https?://[^\s]+)')
 
-# نظام الكاش للسبام (سجل يمسح نفسه برمجياً لتوفير الرام)
-# user_id -> list of message timestamps
 user_messages_cache = defaultdict(list)
-# user_id -> user warnings count
 user_warnings = defaultdict(int)
 
 # ==========================================
@@ -67,18 +103,16 @@ class DeepGuard(commands.Bot):
         self.load_badwords()
 
     def load_badwords(self):
-        """تحميل الكلمات السيئة وتحويلها إلى أنماط Regex ذكية لمنع التحايل"""
         try:
             with open('badwords.json', 'r', encoding='utf-8') as f:
                 words = json.load(f)
                 self.badwords_patterns = []
                 for word in words:
-                    # تحويل "كلب" إلى ك[\W_]*ل[\W_]*ب للقبض على ك-ل-ب أو ك_ل_ب
                     pattern_str = r'[\W_]*'.join(list(word))
                     self.badwords_patterns.append(re.compile(pattern_str, re.IGNORECASE))
-            print(f"تم تحميل {len(self.badwords_patterns)} كلمة وإعداد درع الحماية الذكي.")
+            print(f"[SHIELD] تم تحميل {len(self.badwords_patterns)} كلمة وإعداد درع الحماية الذكي.")
         except FileNotFoundError:
-            print("تحذير: ملف badwords.json غير موجود. سيتم إنشاء ملف فارغ.")
+            print("[WARNING] ملف badwords.json غير موجود. سيتم إنشاء ملف فارغ.")
             with open('badwords.json', 'w', encoding='utf-8') as f:
                 json.dump([], f)
 
@@ -88,18 +122,16 @@ bot = DeepGuard()
 # دوال مساعدة (Helper Functions)
 # ==========================================
 def get_user_level(member: discord.Member) -> int:
-    """تحديد مستوى صلاحيات العضو"""
     role_ids = {role.id for role in member.roles}
     if role_ids.intersection(SUPREME_ROLES) or member.guild.owner_id == member.id:
-        return 3 # Supreme
+        return 3
     if role_ids.intersection(OWNER_ROLES):
-        return 2 # Owner
+        return 2
     if role_ids.intersection(ADMIN_ROLES):
-        return 1 # Admin
-    return 0 # Normal User
+        return 1
+    return 0
 
 async def send_log(guild: discord.Guild, title: str, description: str, color: discord.Color, member: discord.Member = None, message_link: str = None):
-    """إرسال سجل إلى قناة اللوقز"""
     channel = guild.get_channel(LOG_CHANNEL_ID)
     if not channel:
         return
@@ -114,25 +146,22 @@ async def send_log(guild: discord.Guild, title: str, description: str, color: di
     await channel.send(embed=embed)
 
 async def auto_punish(member: discord.Member, reason: str):
-    """نظام العقوبات التلقائي (تحذير ثم ميوت)"""
     user_warnings[member.id] += 1
     warnings = user_warnings[member.id]
 
     if warnings >= 3:
-        # ميوت تلقائي لمدة ساعة
         try:
             duration = timedelta(hours=1)
             await member.timeout(duration, reason=f"تجاوز الحد الأقصى للتحذيرات (السبب الأخير: {reason})")
             await send_log(member.guild, "عقوبة تلقائية: تيم أوت", f"تم إعطاء تيم أوت للعضو لمدة ساعة لتكرار المخالفات.\nالسبب: {reason}", discord.Color.orange(), member)
-            user_warnings[member.id] = 0 # تصفير التحذيرات بعد العقوبة
-        except Exception as e:
+            user_warnings[member.id] = 0
+        except Exception:
             pass
     else:
-        # تحذير فقط
         try:
             await member.send(f"⚠️ **تحذير من نظام DeepGuard:** تم تسجيل مخالفة ضدك. السبب: {reason}. (التحذير رقم {warnings}/3)")
             await send_log(member.guild, "مراقبة: تحذير تلقائي", f"تم تحذير العضو. السبب: {reason} ({warnings}/3)", discord.Color.yellow(), member)
-        except:
+        except Exception:
             pass
 
 # ==========================================
@@ -141,8 +170,7 @@ async def auto_punish(member: discord.Member, reason: str):
 @bot.event
 async def on_ready():
     await bot.tree.sync()
-    print(f'Logged in as {bot.user} - DeepGuard is ACTIVE!')
-    # تغيير حالة البوت
+    print(f'[SYSTEM] Logged in successfully as {bot.user} - DeepGuard is ACTIVE!')
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="السيرفر بصرامة"))
 
 @bot.event
@@ -150,45 +178,37 @@ async def on_message(message: discord.Message):
     if message.author.bot:
         return
 
-    # تجاهل القنوات المستثناة
     if message.channel.id in IGNORED_CHANNELS:
         return
 
     user_level = get_user_level(message.author)
     
-    # الأعضاء الإداريين يتخطون الفلتر
     if user_level > 0:
         return
 
     content = message.content
     now = time.time()
     
-    # 1. نظام كشف السبام والتكرار
     user_cache = user_messages_cache[message.author.id]
     user_cache.append(now)
-    # تنظيف الكاش القديم (الاحتفاظ فقط بآخر 10 ثوانٍ)
     user_messages_cache[message.author.id] = [t for t in user_cache if now - t <= 10]
     
-    if len(user_messages_cache[message.author.id]) >= 4: # أكثر من 3 رسائل في 10 ثواني
+    if len(user_messages_cache[message.author.id]) >= 4:
         await message.delete()
         await auto_punish(message.author, "سبام وإرسال رسائل متكررة بسرعة")
         return
 
-    # 2. فلترة الروابط
     urls = URL_REGEX.findall(content)
     if urls:
         is_bad_link = False
         for url in urls:
             url_lower = url.lower()
-            # منع دعوات الديسكورد
             if "discord.gg/" in url_lower or "discord.com/invite/" in url_lower:
                 is_bad_link = True
                 break
-            # منع الروابط المختصرة
             if any(shortener in url_lower for shortener in SHORTENER_DOMAINS):
                 is_bad_link = True
                 break
-            # السماح فقط بالقائمة البيضاء
             if not any(domain in url_lower for domain in ALLOWED_DOMAINS):
                 is_bad_link = True
                 break
@@ -198,7 +218,6 @@ async def on_message(message: discord.Message):
             await auto_punish(message.author, "إرسال روابط غير مصرح بها أو دعوات سيرفرات")
             return
 
-    # 3. فلترة الكلمات البذيئة (الدرع الذكي)
     for pattern in bot.badwords_patterns:
         if pattern.search(content):
             await message.delete()
@@ -240,7 +259,7 @@ async def timeout(interaction: discord.Interaction, member: discord.Member, minu
 @bot.tree.command(name="مسح", description="حذف عدد من الرسائل (للرتب العليا فقط)")
 @app_commands.describe(amount="عدد الرسائل")
 async def purge(interaction: discord.Interaction, amount: int):
-    if get_user_level(interaction.user) < 2: # Owner أو Supreme فقط
+    if get_user_level(interaction.user) < 2: 
         return await interaction.response.send_message("❌ هذا الأمر مخصص للرتب العليا فقط.", ephemeral=True)
 
     await interaction.response.defer(ephemeral=True)
@@ -251,7 +270,7 @@ async def purge(interaction: discord.Interaction, amount: int):
 @bot.tree.command(name="حظر", description="حظر العضو من السيرفر (للرتب العليا فقط)")
 @app_commands.describe(member="العضو", reason="السبب")
 async def ban(interaction: discord.Interaction, member: discord.Member, reason: str = "بدون سبب"):
-    if get_user_level(interaction.user) < 2: # Owner أو Supreme فقط
+    if get_user_level(interaction.user) < 2: 
         return await interaction.response.send_message("❌ هذا الأمر مخصص للرتب العليا فقط.", ephemeral=True)
 
     if get_user_level(member) >= get_user_level(interaction.user):
@@ -267,7 +286,7 @@ async def ban(interaction: discord.Interaction, member: discord.Member, reason: 
 @bot.tree.command(name="ضبط_القائمة", description="إضافة كلمة جديدة لقائمة الممنوعات (Supreme فقط)")
 @app_commands.describe(word="الكلمة المراد منعها")
 async def add_badword(interaction: discord.Interaction, word: str):
-    if get_user_level(interaction.user) < 3: # Supreme فقط
+    if get_user_level(interaction.user) < 3: 
         return await interaction.response.send_message("❌ هذا الأمر مخصص لرتبة Supreme فقط.", ephemeral=True)
 
     try:
@@ -279,7 +298,6 @@ async def add_badword(interaction: discord.Interaction, word: str):
             with open('badwords.json', 'w', encoding='utf-8') as f:
                 json.dump(words, f, ensure_ascii=False, indent=4)
             
-            # تحديث الأنماط في الذاكرة فوراً
             bot.load_badwords()
             await send_log(interaction.guild, "تحديث النظام", f"تم إضافة كلمة جديدة للقائمة السوداء بواسطة {interaction.user.mention}", discord.Color.blue())
             await interaction.response.send_message(f"✅ تم إضافة الكلمة وتحديث درع الحماية بنجاح.", ephemeral=True)
@@ -288,4 +306,6 @@ async def add_badword(interaction: discord.Interaction, word: str):
     except Exception as e:
         await interaction.response.send_message(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
 
-bot.run(TOKEN)
+if TOKEN:
+    print("[SYSTEM] جاري بدء الاتصال مع ديسكورد...")
+    bot.run(TOKEN)
