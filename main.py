@@ -1,491 +1,291 @@
-import traceback
-import sys
+import discord
+from discord.ext import commands
+from discord import app_commands
 import os
+import json
+import re
+import asyncio
+from collections import defaultdict
+from datetime import timedelta
+import time
+from dotenv import load_dotenv
 
-print("[DeepGuard] Starting initialization...")
+# تحميل المتغيرات البيئية (لحماية التوكن)
+load_dotenv()
+TOKEN = os.getenv('DISCORD_TOKEN')
 
-try:
-    print("[DeepGuard] Importing discord.py...")
-    import discord
-    from discord.ext import commands
-    from discord import app_commands
-    print(f"[DeepGuard] discord.py version: {discord.__version__}")
+# ==========================================
+# الإعدادات الأساسية (القنوات والرتب)
+# ==========================================
+CONTROL_CHANNEL_ID = 1506420018890543114
+LOG_CHANNEL_ID = 1506420345387876402
+
+IGNORED_CHANNELS = {
+    1504557542825529374,
+    1504556508103577743,
+    1497648145666932826,
+    1497621523639570524
+}
+
+# الرتب والصلاحيات
+SUPREME_ROLES = {1505681669418647594, 1497618182763053096}
+OWNER_ROLES = {1497646073060003982}
+ADMIN_ROLES = {1504544220030173265, 1504575260563865681}
+
+# ==========================================
+# إعدادات الفلترة والحماية
+# ==========================================
+ALLOWED_DOMAINS = [
+    "youtube.com", "youtu.be", "facebook.com", "twitter.com", "x.com",
+    "instagram.com", "tiktok.com", "linkedin.com", "twitch.tv",
+    "cdn.discordapp.com", "media.discordapp.net", "warera.com"
+]
+
+SHORTENER_DOMAINS = [
+    "bit.ly", "goo.gl", "tinyurl.com", "t.co", "cutt.ly", "is.gd", "buff.ly"
+]
+
+# تعبير نمطي لاستخراج الروابط من النصوص
+URL_REGEX = re.compile(r'(https?://[^\s]+)')
+
+# نظام الكاش للسبام (سجل يمسح نفسه برمجياً لتوفير الرام)
+# user_id -> list of message timestamps
+user_messages_cache = defaultdict(list)
+# user_id -> user warnings count
+user_warnings = defaultdict(int)
+
+# ==========================================
+# تجهيز البوت
+# ==========================================
+class DeepGuard(commands.Bot):
+    def __init__(self):
+        intents = discord.Intents.default()
+        intents.message_content = True
+        intents.members = True
+        super().__init__(command_prefix="!", intents=intents)
+        self.badwords_patterns = []
+        self.load_badwords()
+
+    def load_badwords(self):
+        """تحميل الكلمات السيئة وتحويلها إلى أنماط Regex ذكية لمنع التحايل"""
+        try:
+            with open('badwords.json', 'r', encoding='utf-8') as f:
+                words = json.load(f)
+                self.badwords_patterns = []
+                for word in words:
+                    # تحويل "كلب" إلى ك[\W_]*ل[\W_]*ب للقبض على ك-ل-ب أو ك_ل_ب
+                    pattern_str = r'[\W_]*'.join(list(word))
+                    self.badwords_patterns.append(re.compile(pattern_str, re.IGNORECASE))
+            print(f"تم تحميل {len(self.badwords_patterns)} كلمة وإعداد درع الحماية الذكي.")
+        except FileNotFoundError:
+            print("تحذير: ملف badwords.json غير موجود. سيتم إنشاء ملف فارغ.")
+            with open('badwords.json', 'w', encoding='utf-8') as f:
+                json.dump([], f)
+
+bot = DeepGuard()
+
+# ==========================================
+# دوال مساعدة (Helper Functions)
+# ==========================================
+def get_user_level(member: discord.Member) -> int:
+    """تحديد مستوى صلاحيات العضو"""
+    role_ids = {role.id for role in member.roles}
+    if role_ids.intersection(SUPREME_ROLES) or member.guild.owner_id == member.id:
+        return 3 # Supreme
+    if role_ids.intersection(OWNER_ROLES):
+        return 2 # Owner
+    if role_ids.intersection(ADMIN_ROLES):
+        return 1 # Admin
+    return 0 # Normal User
+
+async def send_log(guild: discord.Guild, title: str, description: str, color: discord.Color, member: discord.Member = None, message_link: str = None):
+    """إرسال سجل إلى قناة اللوقز"""
+    channel = guild.get_channel(LOG_CHANNEL_ID)
+    if not channel:
+        return
+
+    embed = discord.Embed(title=title, description=description, color=color, timestamp=discord.utils.utcnow())
+    if member:
+        embed.set_author(name=member.display_name, icon_url=member.display_avatar.url)
+        embed.add_field(name="المستخدم", value=f"{member.mention} ({member.id})", inline=False)
+    if message_link:
+        embed.add_field(name="رابط الرسالة", value=f"[اضغط هنا للانتقال]({message_link})", inline=False)
     
-    print("[DeepGuard] Importing other modules...")
-    import json
-    import re
-    from datetime import datetime, timedelta
-    from collections import defaultdict, deque
+    await channel.send(embed=embed)
 
-    # ==================== التكوين ====================
-    print("[DeepGuard] Loading config.json...")
-    with open("config.json", "r", encoding="utf-8") as f:
-        cfg = json.load(f)
-    print("[DeepGuard] config.json loaded successfully")
+async def auto_punish(member: discord.Member, reason: str):
+    """نظام العقوبات التلقائي (تحذير ثم ميوت)"""
+    user_warnings[member.id] += 1
+    warnings = user_warnings[member.id]
 
-    print("[DeepGuard] Loading badwords.json...")
-    with open("badwords.json", "r", encoding="utf-8") as f:
-        BAD_WORDS = set(json.load(f))
-    print(f"[DeepGuard] Loaded {len(BAD_WORDS)} bad words")
-
-    # ==================== الثوابت ====================
-    print("[DeepGuard] Reading environment variables...")
-    TOKEN = os.getenv("DEEPGUARD_TOKEN")
-    if not TOKEN:
-        raise ValueError("❌ متغير البيئة DEEPGUARD_TOKEN غير محدد!")
-    print(f"[DeepGuard] TOKEN found: {TOKEN[:10]}...")
-
-    LOG_CHANNEL_ID = int(cfg["log_channel_id"])
-    CONTROL_CHANNEL_ID = int(cfg["control_channel_id"])
-    IGNORED_CHANNELS = [int(x) for x in cfg["ignored_channels"]]
-
-    SUPREME_ROLES = [int(x) for x in cfg["roles"]["supreme"]]
-    OWNER_ROLES = [int(x) for x in cfg["roles"]["owner"]]
-    ADMIN_ROLES = [int(x) for x in cfg["roles"]["admin"]]
-    ALL_ADMIN_ROLES = SUPREME_ROLES + OWNER_ROLES + ADMIN_ROLES
-
-    ALLOWED_DOMAINS = set(cfg["allowed_domains"])
-    SHORTENERS = set(cfg["url_shorteners"])
-
-    # ==================== الكاش الخفيف ====================
-    message_cache = defaultdict(lambda: deque(maxlen=50))
-    warn_counts = defaultdict(int)
-    muted_users = set()
-
-    # ==================== المساعدات ====================
-    def has_any_role(member, role_ids):
-        return any(r.id in role_ids for r in member.roles)
-
-    def is_immune(member):
-        return has_any_role(member, SUPREME_ROLES + OWNER_ROLES)
-
-    def is_admin(member):
-        return has_any_role(member, ALL_ADMIN_ROLES)
-
-    def is_supreme(member):
-        return has_any_role(member, SUPREME_ROLES)
-
-    def is_owner(member):
-        return has_any_role(member, OWNER_ROLES)
-
-    def get_top_role_power(member):
-        if is_supreme(member): return 3
-        if is_owner(member): return 2
-        if has_any_role(member, ADMIN_ROLES): return 1
-        return 0
-
-    def normalize_arabic(text):
-        text = text.lower()
-        replacements = {
-            'أ': 'ا', 'إ': 'ا', 'آ': 'ا', 'ى': 'ي',
-            'ؤ': 'و', 'ئ': 'ي', 'ة': 'ه',
-            '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '7': 't', '9': 'g',
-            '@': 'a', '$': 's', '!': 'i',
-        }
-        for old, new in replacements.items():
-            text = text.replace(old, new)
-        return text
-
-    def contains_bad_word(text):
-        normalized = normalize_arabic(text)
-        words = re.findall(r'[\w]+', normalized)
-        for w in words:
-            if w in BAD_WORDS:
-                return True
-        for bw in BAD_WORDS:
-            if len(bw) >= 3 and bw in normalized:
-                return True
-        return False
-
-    def extract_domains(text):
-        pattern = r'https?://([^/\s]+)'
-        return re.findall(pattern, text)
-
-    def is_url_allowed(text):
-        domains = extract_domains(text)
-        if not domains:
-            return True
-        for domain in domains:
-            d = domain.lower().replace("www.", "")
-            if any(s in d for s in SHORTENERS):
-                return False
-            allowed = False
-            for ad in ALLOWED_DOMAINS:
-                if ad in d or d.endswith(ad):
-                    allowed = True
-                    break
-            if not allowed:
-                return False
-        return True
-
-    def is_invite_link(text):
-        return bool(re.search(r'discord\.(gg|com/invite)\/[^\s]+', text, re.I))
-
-    async def send_log(guild, title, description, color, fields=None, target_member=None):
-        ch = guild.get_channel(LOG_CHANNEL_ID)
-        if not ch:
-            return
-        emb = discord.Embed(title=title, description=description, color=color, timestamp=datetime.utcnow())
-        if fields:
-            for k, v in fields.items():
-                emb.add_field(name=k, value=v, inline=False)
-        if target_member:
-            emb.set_thumbnail(url=target_member.display_avatar.url)
-        await ch.send(embed=emb)
-
-    async def apply_timeout(member, guild, minutes, reason):
+    if warnings >= 3:
+        # ميوت تلقائي لمدة ساعة
         try:
-            duration = timedelta(minutes=minutes)
-            await member.timeout(duration, reason=reason)
-            await send_log(
-                guild,
-                "⏱️ Timeout",
-                f"{member.mention} تم وضعه في تيم أوت",
-                0xffa500,
-                {"السبب": reason, "المدة": f"{minutes} دقيقة"},
-                member
-            )
+            duration = timedelta(hours=1)
+            await member.timeout(duration, reason=f"تجاوز الحد الأقصى للتحذيرات (السبب الأخير: {reason})")
+            await send_log(member.guild, "عقوبة تلقائية: تيم أوت", f"تم إعطاء تيم أوت للعضو لمدة ساعة لتكرار المخالفات.\nالسبب: {reason}", discord.Color.orange(), member)
+            user_warnings[member.id] = 0 # تصفير التحذيرات بعد العقوبة
         except Exception as e:
-            print(f"[Punish Error] timeout: {e}")
-
-    # ==================== البوت ====================
-    print("[DeepGuard] Setting up intents...")
-    intents = discord.Intents.default()
-    intents.message_content = True
-    intents.members = True
-
-    print("[DeepGuard] Creating bot instance...")
-    bot = commands.Bot(
-        command_prefix="!",
-        intents=intents,
-        help_command=None,
-        max_messages=1000
-    )
-
-    @bot.event
-    async def on_ready():
-        print(f"[DeepGuard] ✅ Logged in as {bot.user}")
-        await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="over the server"))
+            pass
+    else:
+        # تحذير فقط
         try:
-            synced = await bot.tree.sync()
-            print(f"[DeepGuard] Synced {len(synced)} slash commands")
-        except Exception as e:
-            print(f"[DeepGuard] Sync error: {e}")
-        for guild in bot.guilds:
-            log_ch = guild.get_channel(LOG_CHANNEL_ID)
-            if log_ch:
-                emb = discord.Embed(
-                    title="🛡️ DeepGuard Online",
-                    description="البوت يعمل الآن في الوضع الآمن على 1 جيجا رام",
-                    color=0x00ff00,
-                    timestamp=datetime.utcnow()
-                )
-                await log_ch.send(embed=emb)
-                break
-
-    @bot.event
-    async def on_message(message):
-        if message.author.bot:
-            return
-        if not message.guild:
-            return
-        if message.channel.id in IGNORED_CHANNELS:
-            return
-        member = message.author
-        if is_immune(member):
-            return
-
-        content = message.content
-        deleted = False
-
-        # 1. كلمات شتيمة
-        if contains_bad_word(content):
-            try:
-                await message.delete()
-                deleted = True
-                warn_counts[member.id] += 1
-                await send_log(
-                    message.guild,
-                    "🚫 كلمة ممنوعة",
-                    f"تم حذف رسالة من {member.mention}",
-                    0xff0033,
-                    {"العضو": member.mention, "المحتوى": content[:500], "القناة": message.channel.mention},
-                    member
-                )
-                if warn_counts[member.id] >= 3:
-                    await apply_timeout(member, message.guild, 10, "تجاوز 3 تحذيرات (شتائم)")
-            except Exception as e:
-                print(f"[Filter Error] delete badword: {e}")
-
-        # 2. روابط ضارة
-        if not deleted and (not is_url_allowed(content) or is_invite_link(content)):
-            try:
-                await message.delete()
-                deleted = True
-                warn_counts[member.id] += 1
-                await send_log(
-                    message.guild,
-                    "🔗 رابط ممنوع",
-                    f"تم حذف رسالة تحتوي رابطاً غير مصرح به",
-                    0xff6600,
-                    {"العضو": member.mention, "المحتوى": content[:500], "القناة": message.channel.mention},
-                    member
-                )
-                if warn_counts[member.id] >= 3:
-                    await apply_timeout(member, message.guild, 10, "تجاوز 3 تحذيرات (روابط)")
-            except Exception as e:
-                print(f"[Filter Error] delete link: {e}")
-
-        # 3. سبام / تكرار
-        if not deleted:
-            cache = message_cache[member.id]
-            cache.append({"content": content, "time": datetime.utcnow(), "channel": message.channel.id})
-            
-            recent = [m for m in cache if (datetime.utcnow() - m["time"]).total_seconds() <= 10]
-            same_msg = [m for m in recent if m["content"] == content]
-            if len(same_msg) >= 3:
-                try:
-                    await message.delete()
-                    warn_counts[member.id] += 1
-                    await send_log(
-                        message.guild,
-                        "⚠️ سبام",
-                        f"تكرار نفس الرسالة 3 مرات في 10 ثوانٍ",
-                        0xffaa00,
-                        {"العضو": member.mention, "القناة": message.channel.mention},
-                        member
-                    )
-                    if warn_counts[member.id] >= 3:
-                        await apply_timeout(member, message.guild, 15, "تجاوز 3 تحذيرات (سبام)")
-                except Exception as e:
-                    print(f"[Filter Error] delete spam: {e}")
-
-            very_recent = [m for m in cache if (datetime.utcnow() - m["time"]).total_seconds() <= 5]
-            if len(very_recent) >= 5:
-                try:
-                    await message.delete()
-                    warn_counts[member.id] += 1
-                    await send_log(
-                        message.guild,
-                        "🌊 فيض رسائل",
-                        f"5 رسائل في 5 ثوانٍ",
-                        0xffaa00,
-                        {"العضو": member.mention, "القناة": message.channel.mention},
-                        member
-                    )
-                except Exception as e:
-                    print(f"[Filter Error] flood: {e}")
-
-    # ==================== Slash Commands ====================
-    @bot.tree.command(name="تنبيه", description="إرسال تحذير رسمي لعضو")
-    @app_commands.describe(member="العضو", reason="السبب")
-    async def warn_cmd(interaction: discord.Interaction, member: discord.Member, reason: str):
-        if not is_admin(interaction.user):
-            await interaction.response.send_message("❌ ليس لديك صلاحية", ephemeral=True)
-            return
-        if get_top_role_power(member) >= get_top_role_power(interaction.user):
-            await interaction.response.send_message("❌ لا يمكنك تحذير عضو برتبة مساوية أو أعلى", ephemeral=True)
-            return
-        
-        warn_counts[member.id] += 1
-        count = warn_counts[member.id]
-        
-        emb = discord.Embed(title="⚠️ تحذير رسمي", description=f"تم تحذيرك من قبل {interaction.user.mention}", color=0xffaa00)
-        emb.add_field(name="السبب", value=reason, inline=False)
-        emb.add_field(name="عدد التحذيرات", value=str(count), inline=True)
-        
-        try:
-            await member.send(embed=emb)
+            await member.send(f"⚠️ **تحذير من نظام DeepGuard:** تم تسجيل مخالفة ضدك. السبب: {reason}. (التحذير رقم {warnings}/3)")
+            await send_log(member.guild, "مراقبة: تحذير تلقائي", f"تم تحذير العضو. السبب: {reason} ({warnings}/3)", discord.Color.yellow(), member)
         except:
             pass
-        
-        await send_log(
-            interaction.guild,
-            "⚠️ تحذير",
-            f"{member.mention} تلقى تحذيراً من {interaction.user.mention}",
-            0xffaa00,
-            {"السبب": reason, "العدد الإجمالي": str(count)},
-            member
-        )
-        await interaction.response.send_message(f"✅ تم تحذير {member.mention} (العدد: {count})", ephemeral=True)
 
-    @bot.tree.command(name="تيم_أوت", description="وضع عضو في تيم أوت")
-    @app_commands.describe(member="العضو", duration="المدة بالدقائق", reason="السبب")
-    async def timeout_cmd(interaction: discord.Interaction, member: discord.Member, duration: int, reason: str):
-        if not is_admin(interaction.user):
-            await interaction.response.send_message("❌ ليس لديك صلاحية", ephemeral=True)
-            return
-        if get_top_role_power(member) >= get_top_role_power(interaction.user):
-            await interaction.response.send_message("❌ لا يمكنك عقاب عضو برتبة مساوية أو أعلى", ephemeral=True)
-            return
-        
-        try:
-            await member.timeout(timedelta(minutes=duration), reason=reason)
-            await send_log(
-                interaction.guild,
-                "⏱️ Timeout",
-                f"{member.mention} → تيم أوت",
-                0xffa500,
-                {"المدة": f"{duration} دقيقة", "السبب": reason, "بواسطة": interaction.user.mention},
-                member
-            )
-            await interaction.response.send_message(f"✅ تم تيم أوت {member.mention} لمدة {duration} دقيقة", ephemeral=True)
-        except Exception as e:
-            await interaction.response.send_message(f"❌ خطأ: {e}", ephemeral=True)
+# ==========================================
+# الأحداث (Events)
+# ==========================================
+@bot.event
+async def on_ready():
+    await bot.tree.sync()
+    print(f'Logged in as {bot.user} - DeepGuard is ACTIVE!')
+    # تغيير حالة البوت
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="السيرفر بصرامة"))
 
-    @bot.tree.command(name="ميوت", description="ميوت دائم باستخدام رتبة الميوت")
-    @app_commands.describe(member="العضو", reason="السبب")
-    async def mute_cmd(interaction: discord.Interaction, member: discord.Member, reason: str):
-        if not is_admin(interaction.user):
-            await interaction.response.send_message("❌ ليس لديك صلاحية", ephemeral=True)
-            return
-        if get_top_role_power(member) >= get_top_role_power(interaction.user):
-            await interaction.response.send_message("❌ لا يمكنك عقاب عضو برتبة مساوية أو أعلى", ephemeral=True)
-            return
-        
-        mute_role = discord.utils.get(interaction.guild.roles, name="Muted") or discord.utils.get(interaction.guild.roles, name="ميوت")
-        if not mute_role:
-            await interaction.response.send_message("❌ لم يتم العثور على رتبة الميوت (اسمها يجب أن يكون 'Muted' أو 'ميوت')", ephemeral=True)
-            return
-        
-        try:
-            await member.add_roles(mute_role, reason=reason)
-            muted_users.add(member.id)
-            await send_log(
-                interaction.guild,
-                "🔇 Mute",
-                f"{member.mention} تم ميوته",
-                0x808080,
-                {"السبب": reason, "بواسطة": interaction.user.mention},
-                member
-            )
-            await interaction.response.send_message(f"✅ تم ميوت {member.mention}", ephemeral=True)
-        except Exception as e:
-            await interaction.response.send_message(f"❌ خطأ: {e}", ephemeral=True)
+@bot.event
+async def on_message(message: discord.Message):
+    if message.author.bot:
+        return
 
-    @bot.tree.command(name="فك_الميوت", description="إزالة رتبة الميوت")
-    @app_commands.describe(member="العضو")
-    async def unmute_cmd(interaction: discord.Interaction, member: discord.Member):
-        if not (is_supreme(interaction.user) or is_owner(interaction.user)):
-            await interaction.response.send_message("❌ هذه الصلاحية محصورة بـ Supreme و Owner", ephemeral=True)
-            return
-        
-        mute_role = discord.utils.get(interaction.guild.roles, name="Muted") or discord.utils.get(interaction.guild.roles, name="ميوت")
-        if not mute_role:
-            await interaction.response.send_message("❌ لم يتم العثور على رتبة الميوت", ephemeral=True)
-            return
-        
-        try:
-            await member.remove_roles(mute_role)
-            muted_users.discard(member.id)
-            await send_log(
-                interaction.guild,
-                "🔊 Unmute",
-                f"{member.mention} تم فك ميوته",
-                0x00ff00,
-                {"بواسطة": interaction.user.mention},
-                member
-            )
-            await interaction.response.send_message(f"✅ تم فك ميوت {member.mention}", ephemeral=True)
-        except Exception as e:
-            await interaction.response.send_message(f"❌ خطأ: {e}", ephemeral=True)
+    # تجاهل القنوات المستثناة
+    if message.channel.id in IGNORED_CHANNELS:
+        return
 
-    @bot.tree.command(name="حظر", description="حظر عضو من السيرفر")
-    @app_commands.describe(member="العضو", reason="السبب")
-    async def ban_cmd(interaction: discord.Interaction, member: discord.Member, reason: str):
-        if not (is_supreme(interaction.user) or is_owner(interaction.user)):
-            await interaction.response.send_message("❌ هذه الصلاحية محصورة بـ Supreme و Owner", ephemeral=True)
-            return
-        if get_top_role_power(member) >= get_top_role_power(interaction.user):
-            await interaction.response.send_message("❌ لا يمكنك حظر عضو برتبة مساوية أو أعلى", ephemeral=True)
-            return
-        
-        try:
-            await member.ban(reason=reason)
-            await send_log(
-                interaction.guild,
-                "🚫 Ban",
-                f"{member.mention} تم حظره",
-                0xff0000,
-                {"السبب": reason, "بواسطة": interaction.user.mention},
-                member
-            )
-            await interaction.response.send_message(f"✅ تم حظر {member.mention}", ephemeral=True)
-        except Exception as e:
-            await interaction.response.send_message(f"❌ خطأ: {e}", ephemeral=True)
+    user_level = get_user_level(message.author)
+    
+    # الأعضاء الإداريين يتخطون الفلتر
+    if user_level > 0:
+        return
 
-    @bot.tree.command(name="مسح", description="حذف عدد من الرسائل")
-    @app_commands.describe(amount="عدد الرسائل (1-100)")
-    async def purge_cmd(interaction: discord.Interaction, amount: int):
-        if not (is_supreme(interaction.user) or is_owner(interaction.user)):
-            await interaction.response.send_message("❌ هذه الصلاحية محصورة بـ Supreme و Owner", ephemeral=True)
-            return
-        if amount < 1 or amount > 100:
-            await interaction.response.send_message("❌ العدد يجب أن يكون بين 1 و 100", ephemeral=True)
-            return
-        
-        try:
-            deleted = await interaction.channel.purge(limit=amount)
-            await send_log(
-                interaction.guild,
-                "🧹 Purge",
-                f"تم مسح {len(deleted)} رسالة من {interaction.channel.mention}",
-                0x808080,
-                {"بواسطة": interaction.user.mention}
-            )
-            await interaction.response.send_message(f"✅ تم مسح {len(deleted)} رسالة", ephemeral=True)
-        except Exception as e:
-            await interaction.response.send_message(f"❌ خطأ: {e}", ephemeral=True)
+    content = message.content
+    now = time.time()
+    
+    # 1. نظام كشف السبام والتكرار
+    user_cache = user_messages_cache[message.author.id]
+    user_cache.append(now)
+    # تنظيف الكاش القديم (الاحتفاظ فقط بآخر 10 ثوانٍ)
+    user_messages_cache[message.author.id] = [t for t in user_cache if now - t <= 10]
+    
+    if len(user_messages_cache[message.author.id]) >= 4: # أكثر من 3 رسائل في 10 ثواني
+        await message.delete()
+        await auto_punish(message.author, "سبام وإرسال رسائل متكررة بسرعة")
+        return
 
-    @bot.tree.command(name="ضبط_القائمة", description="إضافة/حذف كلمات ممنوعة (Supreme فقط)")
-    @app_commands.describe(action="add أو remove", word="الكلمة")
-    async def config_words_cmd(interaction: discord.Interaction, action: str, word: str):
-        if not is_supreme(interaction.user):
-            await interaction.response.send_message("❌ هذه الصلاحية محصورة بـ Supreme", ephemeral=True)
+    # 2. فلترة الروابط
+    urls = URL_REGEX.findall(content)
+    if urls:
+        is_bad_link = False
+        for url in urls:
+            url_lower = url.lower()
+            # منع دعوات الديسكورد
+            if "discord.gg/" in url_lower or "discord.com/invite/" in url_lower:
+                is_bad_link = True
+                break
+            # منع الروابط المختصرة
+            if any(shortener in url_lower for shortener in SHORTENER_DOMAINS):
+                is_bad_link = True
+                break
+            # السماح فقط بالقائمة البيضاء
+            if not any(domain in url_lower for domain in ALLOWED_DOMAINS):
+                is_bad_link = True
+                break
+        
+        if is_bad_link:
+            await message.delete()
+            await auto_punish(message.author, "إرسال روابط غير مصرح بها أو دعوات سيرفرات")
             return
+
+    # 3. فلترة الكلمات البذيئة (الدرع الذكي)
+    for pattern in bot.badwords_patterns:
+        if pattern.search(content):
+            await message.delete()
+            await auto_punish(message.author, "استخدام ألفاظ نابية أو مشفرة")
+            return
+
+# ==========================================
+# الأوامر (Slash Commands)
+# ==========================================
+@bot.tree.command(name="تنبيه", description="إرسال تحذير رسمي لعضو")
+@app_commands.describe(member="العضو", reason="السبب")
+async def warn(interaction: discord.Interaction, member: discord.Member, reason: str):
+    if get_user_level(interaction.user) < 1:
+        return await interaction.response.send_message("❌ لا تملك الصلاحية لاستخدام هذا الأمر.", ephemeral=True)
+    
+    if get_user_level(member) >= get_user_level(interaction.user):
+        return await interaction.response.send_message("❌ لا يمكنك معاقبة شخص برتبة مساوية أو أعلى منك.", ephemeral=True)
+
+    await auto_punish(member, f"تحذير إداري: {reason}")
+    await interaction.response.send_message(f"✅ تم توجيه تحذير إلى {member.mention} بنجاح.", ephemeral=True)
+
+@bot.tree.command(name="تيم_أوت", description="إعطاء العضو timeout")
+@app_commands.describe(member="العضو", minutes="عدد الدقائق", reason="السبب")
+async def timeout(interaction: discord.Interaction, member: discord.Member, minutes: int, reason: str = "بدون سبب"):
+    if get_user_level(interaction.user) < 1:
+        return await interaction.response.send_message("❌ لا تملك الصلاحية لاستخدام هذا الأمر.", ephemeral=True)
+
+    if get_user_level(member) >= get_user_level(interaction.user):
+        return await interaction.response.send_message("❌ لا يمكنك معاقبة شخص برتبة مساوية أو أعلى منك.", ephemeral=True)
+
+    try:
+        duration = timedelta(minutes=minutes)
+        await member.timeout(duration, reason=reason)
+        await send_log(interaction.guild, "إجراء إداري: تيم أوت", f"بواسطة: {interaction.user.mention}\nالسبب: {reason}\nالمدة: {minutes} دقيقة", discord.Color.orange(), member)
+        await interaction.response.send_message(f"✅ تم إعطاء تيم أوت لـ {member.mention} لمدة {minutes} دقيقة.", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ البوت لا يملك صلاحية كافية (تأكد من ترتيب رتبة البوت).", ephemeral=True)
+
+@bot.tree.command(name="مسح", description="حذف عدد من الرسائل (للرتب العليا فقط)")
+@app_commands.describe(amount="عدد الرسائل")
+async def purge(interaction: discord.Interaction, amount: int):
+    if get_user_level(interaction.user) < 2: # Owner أو Supreme فقط
+        return await interaction.response.send_message("❌ هذا الأمر مخصص للرتب العليا فقط.", ephemeral=True)
+
+    await interaction.response.defer(ephemeral=True)
+    deleted = await interaction.channel.purge(limit=amount)
+    await send_log(interaction.guild, "إجراء إداري: مسح رسائل", f"تم مسح {len(deleted)} رسالة في {interaction.channel.mention}\nبواسطة: {interaction.user.mention}", discord.Color.light_grey())
+    await interaction.followup.send(f"✅ تم مسح {len(deleted)} رسائل بنجاح.")
+
+@bot.tree.command(name="حظر", description="حظر العضو من السيرفر (للرتب العليا فقط)")
+@app_commands.describe(member="العضو", reason="السبب")
+async def ban(interaction: discord.Interaction, member: discord.Member, reason: str = "بدون سبب"):
+    if get_user_level(interaction.user) < 2: # Owner أو Supreme فقط
+        return await interaction.response.send_message("❌ هذا الأمر مخصص للرتب العليا فقط.", ephemeral=True)
+
+    if get_user_level(member) >= get_user_level(interaction.user):
+        return await interaction.response.send_message("❌ لا يمكنك حظر شخص برتبة مساوية أو أعلى منك.", ephemeral=True)
+
+    try:
+        await member.ban(reason=reason)
+        await send_log(interaction.guild, "إجراء إداري: حظر (Ban)", f"بواسطة: {interaction.user.mention}\nالسبب: {reason}", discord.Color.red(), member)
+        await interaction.response.send_message(f"✅ تم حظر {member.name} بنجاح.", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ البوت لا يملك صلاحية كافية.", ephemeral=True)
+
+@bot.tree.command(name="ضبط_القائمة", description="إضافة كلمة جديدة لقائمة الممنوعات (Supreme فقط)")
+@app_commands.describe(word="الكلمة المراد منعها")
+async def add_badword(interaction: discord.Interaction, word: str):
+    if get_user_level(interaction.user) < 3: # Supreme فقط
+        return await interaction.response.send_message("❌ هذا الأمر مخصص لرتبة Supreme فقط.", ephemeral=True)
+
+    try:
+        with open('badwords.json', 'r', encoding='utf-8') as f:
+            words = json.load(f)
         
-        global BAD_WORDS
-        action = action.lower().strip()
-        word = word.lower().strip()
-        
-        if action == "add":
-            BAD_WORDS.add(word)
-            msg = f"✅ تم إضافة `{word}`"
-        elif action == "remove":
-            BAD_WORDS.discard(word)
-            msg = f"✅ تم حذف `{word}`"
+        if word not in words:
+            words.append(word)
+            with open('badwords.json', 'w', encoding='utf-8') as f:
+                json.dump(words, f, ensure_ascii=False, indent=4)
+            
+            # تحديث الأنماط في الذاكرة فوراً
+            bot.load_badwords()
+            await send_log(interaction.guild, "تحديث النظام", f"تم إضافة كلمة جديدة للقائمة السوداء بواسطة {interaction.user.mention}", discord.Color.blue())
+            await interaction.response.send_message(f"✅ تم إضافة الكلمة وتحديث درع الحماية بنجاح.", ephemeral=True)
         else:
-            await interaction.response.send_message("❌ الإجراء يجب أن يكون add أو remove", ephemeral=True)
-            return
-        
-        with open("badwords.json", "w", encoding="utf-8") as f:
-            json.dump(list(BAD_WORDS), f, ensure_ascii=False, indent=2)
-        
-        await interaction.response.send_message(msg, ephemeral=True)
+            await interaction.response.send_message("⚠️ الكلمة موجودة مسبقاً في القائمة.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ حدث خطأ: {str(e)}", ephemeral=True)
 
-    @bot.tree.command(name="حالة_البوت", description="عرض إحصائيات البوت")
-    async def stats_cmd(interaction: discord.Interaction):
-        if not is_admin(interaction.user):
-            await interaction.response.send_message("❌ ليس لديك صلاحية", ephemeral=True)
-            return
-        
-        emb = discord.Embed(title="🛡️ DeepGuard Stats", color=0x00ffcc)
-        emb.add_field(name="التحذيرات النشطة", value=str(len(warn_counts)), inline=True)
-        emb.add_field(name="الميوت النشط", value=str(len(muted_users)), inline=True)
-        emb.add_field(name="الكاش (رسائل)", value=str(sum(len(v) for v in message_cache.values())), inline=True)
-        emb.add_field(name="السيرفرات", value=str(len(bot.guilds)), inline=True)
-        await interaction.response.send_message(embed=emb, ephemeral=True)
-
-    # ==================== التشغيل ====================
-    print("[DeepGuard] Starting bot.run()...")
-    if __name__ == "__main__":
-        bot.run(TOKEN)
-
-except Exception as e:
-    print("=" * 60)
-    print("[FATAL ERROR] DeepGuard failed to start!")
-    print(f"Error: {e}")
-    print("-" * 60)
-    traceback.print_exc()
-    print("=" * 60)
-    sys.exit(1)
+bot.run(TOKEN)
