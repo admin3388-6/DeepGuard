@@ -11,7 +11,6 @@ from PIL import Image, ImageDraw
 import aiohttp
 from collections import defaultdict, deque
 import time
-from datetime import datetime, timedelta
 
 # ---------- تحميل الكلمات السيئة ----------
 try:
@@ -58,32 +57,53 @@ WELCOME_CHANNEL_ID = 1537246493088555038
 FILTER_CHANNEL_ID = 1537245866623246416
 WELCOME_BG_URL = "https://i.ibb.co/rY0pszN/Police-officers-posing-in-city-202608130017.jpg"
 
-# ---------- نظام مكافحة السبام المتقدم ----------
+# ---------- نظام مكافحة السبام المتقدم (أقل صرامة) ----------
 user_messages = defaultdict(lambda: deque(maxlen=10))  # آخر 10 رسائل لكل مستخدم
-message_timestamps = defaultdict(lambda: deque(maxlen=10))
-last_message_time = defaultdict(float)  # وقت آخر رسالة من كل مستخدم
-SPAM_INTERVAL = 5  # ثواني بين الرسائل
-SPAM_WINDOW = 10   # ثواني
-SPAM_THRESHOLD = 3  # عدد الرسائل المسموح به في النافذة
-SAFE_WORDS = {"سلام", "شكرا", "شكراً", "مرحبا", "اهلا", "هلا"}
+user_timestamps = defaultdict(lambda: deque(maxlen=10))
 
-def normalize_text(text: str) -> str:
-    """تطبيع النص: إزالة التشكيل، توحيد الأحرف"""
-    text = text.lower()
-    # توحيد الألف
-    text = text.replace('إ', 'ا').replace('أ', 'ا').replace('آ', 'ا')
-    # توحيد التاء المربوطة
-    text = text.replace('ة', 'ه')
-    # إزالة علامات الترقيم
-    text = re.sub(r'[^\w\s]', '', text)
-    return text
-
-def is_safe_word(text: str) -> bool:
-    """التحقق من أن النص هو كلمة آمنة (مثل سلام)"""
-    normalized = normalize_text(text)
-    for word in SAFE_WORDS:
-        if word in normalized:
-            return True
+def is_spam(text: str, user_id: int) -> bool:
+    """الكشف عن السبام الواضح فقط"""
+    # 1. تجاهل الرسائل القصيرة جداً (أقل من 3 أحرف)
+    if len(text.strip()) < 3:
+        return False
+    
+    # 2. الكشف عن تكرار الإيموجي بكثافة عالية (أكثر من 10 إيموجي)
+    emoji_pattern = re.compile(r'[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F700-\U0001F77F\U0001F780-\U0001F7FF\U0001F800-\U0001F8FF\U0001F900-\U0001F9FF\U0001FA00-\U0001FA6F\U0001FA70-\U0001FAFF\U0001FB00-\U0001FBFF\u2600-\u26FF\u2700-\u27BF]+')
+    emojis = emoji_pattern.findall(text)
+    if len(emojis) >= 10:
+        return True
+    
+    # 3. الكشف عن تكرار الرسائل المتطابقة أو المتشابهة جداً في وقت قصير
+    current_time = time.time()
+    user_timestamps[user_id].append(current_time)
+    
+    # تنظيف الطوابع الأقدم من 10 ثوانٍ
+    while user_timestamps[user_id] and user_timestamps[user_id][0] < current_time - 10:
+        user_timestamps[user_id].popleft()
+    
+    # إذا أرسل المستخدم أكثر من 5 رسائل في 10 ثوانٍ
+    if len(user_timestamps[user_id]) >= 5:
+        # التحقق من تشابه الرسائل
+        last_messages = list(user_messages[user_id])
+        if len(last_messages) >= 5:
+            # حساب عدد الرسائل المتطابقة (نفس النص تماماً)
+            identical_count = sum(1 for msg in last_messages if msg == text)
+            if identical_count >= 3:
+                return True
+            # حساب عدد الرسائل المتشابهة جداً (مسافة Levenshtein <= 2)
+            similar_count = 0
+            for msg in last_messages:
+                if len(msg) > 3 and len(text) > 3:
+                    dist = levenshtein_distance(text, msg)
+                    if dist <= 2:
+                        similar_count += 1
+            if similar_count >= 4:
+                return True
+    
+    # 4. روابط مشبوهة (دعوات سيرفر، إعلانات)
+    if re.search(r'(discord\.gg/|discord\.com/invite/|free\s+nitro|free\s+robux|click\s+here|join\s+now)', text, re.IGNORECASE):
+        return True
+    
     return False
 
 def levenshtein_distance(s1: str, s2: str) -> int:
@@ -103,61 +123,6 @@ def levenshtein_distance(s1: str, s2: str) -> int:
         previous_row = current_row
     return previous_row[-1]
 
-def detect_emoji_spam(text: str) -> bool:
-    """الكشف عن تكرار الإيموجي المتغير"""
-    emoji_pattern = re.compile(r'[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F700-\U0001F77F\U0001F780-\U0001F7FF\U0001F800-\U0001F8FF\U0001F900-\U0001F9FF\U0001FA00-\U0001FA6F\U0001FA70-\U0001FAFF\U0001FB00-\U0001FBFF\u2600-\u26FF\u2700-\u27BF]+')
-    emojis = emoji_pattern.findall(text)
-    if len(emojis) >= 5:
-        # حساب عدد الإيموجي الفريد والمتكرر
-        unique_emojis = set(emojis)
-        if len(emojis) / max(1, len(unique_emojis)) >= 2:  # تكرار بنسبة 2:1
-            return True
-        if len(emojis) >= 8:  # كمية كبيرة جداً
-            return True
-    return False
-
-def is_spam(text: str, user_id: int) -> bool:
-    """الكشف المتقدم عن السبام"""
-    current_time = time.time()
-    
-    # 1. التحقق من التكرار مع اختلاف بسيط (Levenshtein)
-    last_messages = user_messages[user_id]
-    for prev_msg in last_messages:
-        if prev_msg and len(prev_msg) > 3 and len(text) > 3:
-            dist = levenshtein_distance(text, prev_msg)
-            if dist <= 2 and len(text) > 5:  # تشابه كبير
-                return True
-    
-    # 2. تكرار الإيموجي مع التنويع
-    if detect_emoji_spam(text):
-        return True
-    
-    # 3. تكرار الحروف (أكثر من 4)
-    if re.search(r'(.)\1{4,}', text):
-        return True
-    
-    # 4. روابط مكررة أو دعوات
-    if re.search(r'(discord\.gg/|discord\.com/invite/|free\s+nitro|free\s+robux|click\s+here|join\s+now)', text, re.IGNORECASE):
-        return True
-    
-    # 5. تكرار الإرسال السريع (أكثر من 3 رسائل في 10 ثوانٍ)
-    timestamps = message_timestamps[user_id]
-    timestamps.append(current_time)
-    # حذف الطوابع الأقدم من النافذة
-    while timestamps and timestamps[0] < current_time - SPAM_WINDOW:
-        timestamps.popleft()
-    if len(timestamps) > SPAM_THRESHOLD:
-        # استثناء الكلمات الآمنة (مثل سلام)
-        if not is_safe_word(text):
-            return True
-    
-    # 6. الفاصل الزمني بين الرسائل (5 ثوانٍ)
-    if current_time - last_message_time[user_id] < SPAM_INTERVAL:
-        if not is_safe_word(text):
-            return True
-    
-    return False
-
 # ---------- دالة إنشاء صورة الترحيب (بدون تغيير الأبعاد) ----------
 async def create_welcome_image(member: discord.Member):
     async with aiohttp.ClientSession() as session:
@@ -168,7 +133,6 @@ async def create_welcome_image(member: discord.Member):
     
     # فتح الصورة الخلفية دون تغيير حجمها
     bg = Image.open(BytesIO(bg_data)).convert("RGBA")
-    # الحفاظ على الأبعاد الأصلية
     bg_width, bg_height = bg.size
     
     # جلب صورة الملف الشخصي
@@ -181,7 +145,7 @@ async def create_welcome_image(member: discord.Member):
     
     avatar = Image.open(BytesIO(avatar_data)).convert("RGBA")
     # حجم الصورة الرمزية (نسبة من عرض الخلفية)
-    avatar_size = int(bg_width * 0.1)  # 10% من عرض الخلفية
+    avatar_size = int(bg_width * 0.1)  # 10% من العرض
     avatar_size = max(60, min(avatar_size, 120))  # بين 60 و 120 بكسل
     avatar = avatar.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
     
@@ -191,7 +155,7 @@ async def create_welcome_image(member: discord.Member):
     draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
     avatar.putalpha(mask)
     
-    # وضع الصورة في الزاوية اليمنى العليا مع هامش 5%
+    # وضع الصورة في الزاوية اليمنى العليا مع هامش 2%
     margin = int(bg_width * 0.02)
     bg.paste(avatar, (bg_width - avatar_size - margin, margin), avatar)
     
@@ -245,9 +209,8 @@ async def on_message(message):
     # تحديث بيانات المستخدم
     user_id = message.author.id
     user_messages[user_id].append(message.content)
-    last_message_time[user_id] = time.time()
     
-    # التحقق من الكلمات السيئة
+    # التحقق من الكلمات السيئة أولاً
     if contains_bad_word(message.content):
         await message.delete()
         await message.channel.send(
