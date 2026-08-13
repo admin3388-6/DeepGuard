@@ -14,20 +14,17 @@ import aiohttp
 try:
     with open('badwords.json', 'r', encoding='utf-8') as f:
         RAW_DATA = json.load(f)
-        # البنية: { "bad_words_filter": { ... } }
         BAD_WORDS_DATA = RAW_DATA.get('bad_words_filter', RAW_DATA)
 except FileNotFoundError:
     print("⚠️ ملف badwords.json غير موجود! سيتم استخدام قائمة فارغة.")
     BAD_WORDS_DATA = {}
 
-# استخراج الفئات والكلمات من الملف فقط (بدون إضافات في الكود)
 categories = BAD_WORDS_DATA.get('categories', {})
 BAD_WORDS_SET = set()
 for category, words in categories.items():
     if isinstance(words, list):
         BAD_WORDS_SET.update(words)
 
-# القائمة البيضاء من filter_settings
 filter_settings = BAD_WORDS_DATA.get('filter_settings', {})
 WHITELIST = set(filter_settings.get('false_positive_whitelist', []))
 
@@ -54,7 +51,6 @@ intents.members = True
 bot = discord.Client(intents=intents)
 tree = app_commands.CommandTree(bot)
 
-# معرفات القنوات
 WELCOME_CHANNEL_ID = 1537246493088555038
 FILTER_CHANNEL_ID = 1537245866623246416
 WELCOME_BG_URL = "https://i.ibb.co/rY0pszN/Police-officers-posing-in-city-202608130017.jpg"
@@ -94,7 +90,7 @@ async def create_welcome_image(member: discord.Member):
     img_bytes.seek(0)
     return img_bytes
 
-# ---------- حدث عند انضمام عضو ----------
+# ---------- حدث عند انضمام عضو جديد (معدل حسب الطلب) ----------
 @bot.event
 async def on_member_join(member):
     channel = bot.get_channel(WELCOME_CHANNEL_ID)
@@ -104,26 +100,23 @@ async def on_member_join(member):
     
     img_bytes = await create_welcome_image(member)
     if img_bytes is None:
-        await channel.send(f" 
-        {member.mention} 
-        ")
+        # إذا فشلت الصورة، نرسل رسالة نصية فقط (بدون إيموجي)
+        msg = await channel.send(f"welcome {member.mention}")
+        await msg.add_reaction('👋')
         return
     
+    # إرسال رسالة نصية مع الصورة المرفقة (بدون Embed)
     file = discord.File(img_bytes, filename="welcome.png")
-    embed = discord.Embed(
-        title=f" welcome {member.display_name}!",
-        description=" ",
-        color=discord.Color.green()
-    )
-    embed.set_image(url="attachment://welcome.png")
-    await channel.send(f"مرحباً {member.mention}", embed=embed, file=file)
+    msg = await channel.send(content=f"welcome {member.mention}", file=file)
+    
+    # إضافة تفاعل 👋 على الرسالة المرسلة
+    await msg.add_reaction('👋')
 
-# ---------- فلتر الكلمات ----------
+# ---------- فلتر الكلمات السيئة ----------
 def contains_bad_word(text: str) -> bool:
     text_lower = text.lower()
     for bad_word in BAD_WORDS_SET:
         if bad_word.lower() in text_lower:
-            # التحقق من القائمة البيضاء
             is_whitelisted = False
             for ww in WHITELIST:
                 if bad_word.lower() in ww.lower():
@@ -144,7 +137,7 @@ def is_spam(text: str) -> bool:
         return True
     return False
 
-# ---------- مراقبة الرسائل ----------
+# ---------- حدث عند كل رسالة (مراقبة القناة المحددة) ----------
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
@@ -190,7 +183,7 @@ async def on_ready():
     except Exception as e:
         print(f'❌ خطأ في المزامنة: {e}')
 
-# ---------- التشغيل ----------
+# ---------- تشغيل البوت وخادم الويب ----------
 def run_bot():
     try:
         bot.run(os.getenv('DISCORD_TOKEN'))
