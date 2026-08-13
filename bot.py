@@ -104,13 +104,15 @@ async def on_member_join(member):
     
     img_bytes = await create_welcome_image(member)
     if img_bytes is None:
-        await channel.send(f"🎉 مرحباً {member.mention} في السيرفر! نتمنى لك قضاء وقت ممتع.")
+        await channel.send(f" 
+        {member.mention} 
+        ")
         return
     
     file = discord.File(img_bytes, filename="welcome.png")
     embed = discord.Embed(
-        title=f"🎉 مرحباً {member.display_name}!",
-        description="نحن سعداء بانضمامك إلى مجتمعنا! 🥳\nاقرأ القوانين واستمتع.",
+        title=f" welcome {member.display_name}!",
+        description=" ",
         color=discord.Color.green()
     )
     embed.set_image(url="attachment://welcome.png")
