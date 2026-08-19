@@ -35,7 +35,7 @@ app_web = Flask(__name__)
 
 @app_web.route('/')
 def home():
-    return jsonify({"status": "Bot is running!", "version": "3.0"}), 200
+    return jsonify({"status": "Bot is running!", "version": "3.1"}), 200
 
 @app_web.route('/ping')
 def ping():
@@ -237,6 +237,76 @@ async def send_message(interaction: discord.Interaction, content: str):
 async def send_with_image(interaction: discord.Interaction, content: str, image: discord.Attachment):
     file = await image.to_file()
     await interaction.response.send_message(content=content, file=file)
+
+# ---------- أمر إرسال الإيمبد الاحترافي الجديد ----------
+@tree.command(name='send_embed', description='إرسال رسالة إيمبد احترافية مخصصة بالكامل مع صور متعددة')
+@app_commands.describe(
+    title="عنوان الإيمبد الرئيسي (اختياري)",
+    description="وصف أو محتوى الإيمبد (اختياري)",
+    color="كود اللون (مثال: #ff0000 أو ff0000 للون الأحمر) (اختياري)",
+    author_name="اسم الكاتب (يظهر أعلى الإيمبد) (اختياري)",
+    author_icon="أيقونة الكاتب (صورة صغيرة بالأعلى) (اختياري)",
+    thumbnail="صورة مصغرة (تظهر على يمين أو يسار الإيمبد) (اختياري)",
+    main_image="الصورة الرئيسية (صورة كبيرة أسفل النص) (اختياري)",
+    footer_text="نص التذييل (يظهر أسفل الإيمبد) (اختياري)",
+    footer_icon="أيقونة التذييل (صورة صغيرة بالأسفل) (اختياري)"
+)
+async def send_embed(
+    interaction: discord.Interaction,
+    title: str = None,
+    description: str = None,
+    color: str = None,
+    author_name: str = None,
+    author_icon: discord.Attachment = None,
+    thumbnail: discord.Attachment = None,
+    main_image: discord.Attachment = None,
+    footer_text: str = None,
+    footer_icon: discord.Attachment = None
+):
+    # تجهيز لون الإيمبد
+    embed_color = discord.Color.default()
+    if color:
+        try:
+            # تنظيف الكود اللوني من علامة الهاشتاج إذا وجدت وتأكيد صحة اللون
+            color_hex = color.replace("#", "")
+            embed_color = discord.Color(int(color_hex, 16))
+        except ValueError:
+            pass  # سيتم استخدام اللون الافتراضي إذا كان الكود غير صالح
+
+    # التأكد من وجود محتوى أساسي
+    if not title and not description:
+        await interaction.response.send_message("❌ يجب إدخال `title` (عنوان) أو `description` (وصف) على الأقل لإنشاء الإيمبد.", ephemeral=True)
+        return
+
+    # إنشاء كائن الإيمبد
+    embed = discord.Embed(title=title, description=description, color=embed_color)
+
+    # إضافة معلومات الكاتب وصورته (الأعلى)
+    if author_name:
+        icon_url = author_icon.url if author_icon else None
+        embed.set_author(name=author_name, icon_url=icon_url)
+    elif author_icon:
+        # إذا تم وضع صورة بدون اسم
+        embed.set_author(name="\u200b", icon_url=author_icon.url)
+
+    # إضافة الصورة المصغرة (الجانبية)
+    if thumbnail:
+        embed.set_thumbnail(url=thumbnail.url)
+
+    # إضافة الصورة الرئيسية (الكبيرة)
+    if main_image:
+        embed.set_image(url=main_image.url)
+
+    # إضافة معلومات التذييل (الأسفل)
+    if footer_text:
+        f_icon_url = footer_icon.url if footer_icon else None
+        embed.set_footer(text=footer_text, icon_url=f_icon_url)
+    elif footer_icon:
+        # إذا تم وضع صورة تذييل بدون نص
+        embed.set_footer(text="\u200b", icon_url=footer_icon.url)
+
+    # إرسال الرسالة
+    await interaction.response.send_message(embed=embed)
 
 # ---------- حدث الجاهزية ----------
 @bot.event
