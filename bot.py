@@ -263,6 +263,9 @@ async def send_embed(
     footer_text: str = None,
     footer_icon: discord.Attachment = None
 ):
+    # إخبار الديسكورد بالانتظار لتجنب خطأ "Unknown interaction" (مهلة الـ 3 ثواني)
+    await interaction.response.defer()
+
     # تجهيز لون الإيمبد
     embed_color = discord.Color.default()
     if color:
@@ -275,7 +278,7 @@ async def send_embed(
 
     # التأكد من وجود محتوى أساسي
     if not title and not description:
-        await interaction.response.send_message("❌ يجب إدخال `title` (عنوان) أو `description` (وصف) على الأقل لإنشاء الإيمبد.", ephemeral=True)
+        await interaction.followup.send("❌ يجب إدخال `title` (عنوان) أو `description` (وصف) على الأقل لإنشاء الإيمبد.", ephemeral=True)
         return
 
     # إنشاء كائن الإيمبد
@@ -305,8 +308,8 @@ async def send_embed(
         # إذا تم وضع صورة تذييل بدون نص
         embed.set_footer(text="\u200b", icon_url=footer_icon.url)
 
-    # إرسال الرسالة
-    await interaction.response.send_message(embed=embed)
+    # إرسال الرسالة باستخدام followup بدلاً من response.send_message بسبب استخدام defer
+    await interaction.followup.send(embed=embed)
 
 # ---------- حدث الجاهزية ----------
 @bot.event
