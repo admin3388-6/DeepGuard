@@ -3,41 +3,61 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deep Guard — لوحة التحكم عن بُعد</title>
+<title>Deep Guard — مركز القيادة والتحكم</title>
 <style>
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
-  margin: 0; padding: 20px;
+  margin: 0; padding: 20px 14px 60px;
   background: #000000; color: #ffffff;
   font-family: system-ui, -apple-system, sans-serif;
   display: flex; justify-content: center;
 }
-.container { width: min(550px, 100%); }
-.header { text-align: center; margin-bottom: 24px; border-bottom: 1px solid #1a1a1a; padding-bottom: 16px; }
-h1 { font-size: 20px; margin: 0; font-weight: 800; letter-spacing: -0.5px; }
+.container { width: min(650px, 100%); }
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid #1a1a1a; padding-bottom: 16px; margin-bottom: 20px;
+}
+h1 { font-size: 19px; margin: 0; font-weight: 800; letter-spacing: -0.5px; }
+.badge {
+  font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
+  border: 1px solid #222; background: #0a0a0a; display: inline-flex; align-items: center; gap: 6px;
+}
+.badge.on { border-color: #14532d; color: #4ade80; }
+.badge.kill { border-color: #7f1d1d; color: #f87171; }
+.stats-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px;
+}
+.stat-card {
+  background: #0a0a0a; border: 1px solid #1f1f1f; border-radius: 12px; padding: 14px 10px; text-align: center;
+}
+.stat-num { font-size: 24px; font-weight: 900; color: #ffffff; }
+.stat-lbl { font-size: 11px; color: #888888; margin-top: 4px; }
 .card {
-  background: #0a0a0a; border: 1px solid #222222;
-  border-radius: 12px; padding: 16px; margin-bottom: 14px;
+  background: #0a0a0a; border: 1px solid #222222; border-radius: 12px; padding: 16px; margin-bottom: 14px;
+}
+.card-title {
+  font-size: 13px; font-weight: 800; margin: 0 0 12px; color: #eee;
+  display: flex; align-items: center; justify-content: space-between;
 }
 label { display: block; font-size: 12px; font-weight: 700; color: #aaa; margin-bottom: 6px; }
-input, textarea {
+input, select, textarea {
   width: 100%; padding: 11px; margin-bottom: 12px;
   background: #000; border: 1px solid #2a2a2a; border-radius: 8px;
   color: #fff; font-size: 13px; outline: none; font-family: inherit;
 }
-input:focus, textarea:focus { border-color: #fff; }
+input:focus, select:focus, textarea:focus { border-color: #fff; }
 .tgl-row {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 0; border-bottom: 1px solid #1a1a1a; margin-bottom: 10px;
+  padding: 10px 0; border-bottom: 1px solid #1a1a1a; margin-bottom: 12px;
 }
-.switch { position: relative; width: 36px; height: 20px; }
+.switch { position: relative; width: 38px; height: 22px; }
 .switch input { display: none; }
 .slider {
   position: absolute; cursor: pointer; inset: 0;
   background: #222; border-radius: 20px; transition: .2s;
 }
 .slider:before {
-  content: ""; position: absolute; height: 14px; width: 14px;
+  content: ""; position: absolute; height: 16px; width: 16px;
   left: 3px; bottom: 3px; background: #666; border-radius: 50%; transition: .2s;
 }
 input:checked + .slider { background: #ef4444; }
@@ -48,112 +68,200 @@ button {
   cursor: pointer; transition: 0.2s;
 }
 button:hover { background: #e5e5e5; }
-.status-pill {
-  font-size: 11px; padding: 4px 10px; border-radius: 20px;
-  background: #111; border: 1px solid #222; display: inline-block; margin-top: 6px;
+.dev-list {
+  max-height: 180px; overflow-y: auto; font-size: 11px; font-family: monospace;
+}
+.dev-item {
+  display: flex; justify-content: space-between; padding: 6px 0;
+  border-bottom: 1px solid #161616; color: #bbb;
 }
 .toast {
   position: fixed; top: 16px; left: 16px; right: 16px;
   background: #16a34a; color: #fff; padding: 12px; border-radius: 8px;
-  text-align: center; font-weight: 700; font-size: 13px; display: none;
+  text-align: center; font-weight: 700; font-size: 13px; display: none; z-index: 999;
 }
 </style>
 </head>
 <body>
 
-<div id="toast" class="toast">تم حفظ التغييرات بنجاح!</div>
+<div id="toast" class="toast">تم حفظ الإعدادات وتطبيقها فوراً!</div>
 
 <div class="container">
   <div class="header">
-    <h1>🛡️ Deep Guard Remote</h1>
-    <div id="statusBadge" class="status-pill">التطبيق يعمل بشكل طبيعي ✓</div>
+    <div>
+      <h1>Deep Guard Control</h1>
+      <div style="font-size:11px;color:#666;margin-top:2px;">مركز الإحصائيات والتحكم اللحظي</div>
+    </div>
+    <div id="statusBadge" class="badge on">
+      <span>●</span>
+      <span>التطبيق يعمل</span>
+    </div>
   </div>
 
+  <!-- الإحصائيات الحية من Supabase -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-num" id="statTotal">0</div>
+      <div class="stat-lbl">إجمالي الأجهزة</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statActive">0</div>
+      <div class="stat-lbl">أجهزة نشطة اليوم</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statVersions">0</div>
+      <div class="stat-lbl">الإصدارات المكتشفة</div>
+    </div>
+  </div>
+
+  <!-- مفتاح المصادقة -->
   <div class="card">
     <label>كلمة مرور المسؤول (Admin Password)</label>
-    <input type="password" id="pass" placeholder="أدخل كلمة المرور لحفظ التعديلات">
+    <input type="password" id="pass" placeholder="أدخل كلمة المرور لتطبيق التعديلات">
   </div>
 
+  <!-- استهداف النسخ والقتل -->
   <div class="card">
+    <div class="card-title">
+      <span>إيقاف التطبيق (Kill Switch)</span>
+      <span style="font-size:11px;color:#888;">استهداف محدد</span>
+    </div>
+
+    <label>الإصدار المستهدف</label>
+    <select id="targetV">
+      <option value="0">كافة الإصدارات بلا استثناء</option>
+      <option value="1">الإصدار 1 (VersionCode 1) فقط</option>
+      <option value="2">الإصدار 2 (VersionCode 2) فقط</option>
+    </select>
+
     <div class="tgl-row">
-      <span style="font-weight:bold;color:#ef4444;">⛔ تعطيل التطبيق فوراً (Kill Switch)</span>
+      <span style="color:#ef4444;font-weight:700;">⛔ تفعيل أمر القفل الفوري</span>
       <label class="switch">
         <input type="checkbox" id="killSwitch">
         <span class="slider"></span>
       </label>
     </div>
+
     <label>رسالة التوقف للمستخدم</label>
-    <input type="text" id="killMsg" value="التطبيق متوقف مؤقتاً للصيانة من قِبل الإدارة.">
+    <input type="text" id="killMsg" value="التطبيق متوقف مؤقتاً لأعمال الصيانة">
+
+    <label>رابط صورة لشاشة الإيقاف (اختياري)</label>
+    <input type="url" id="imgUrl" placeholder="https://example.com/banner.png">
   </div>
 
+  <!-- التحديث الإجباري -->
   <div class="card">
-    <label>رابط التحديث الإجباري (Update APK URL)</label>
-    <input type="url" id="updateUrl" placeholder="اتركه فارغاً إن لم يكن هناك تحديث">
-    <label>عنوان نافذة التحديث</label>
-    <input type="text" id="updTitle" value="تحديث جديد متوفر">
-    <label>رسالة التحديث</label>
-    <input type="text" id="updMsg" value="يرجى تنزيل الإصدار الأخير لمواصلة الاستخدام.">
+    <div class="card-title">التحديث الإجباري (Force Update)</div>
+    <label>الحد الأدنى للنسخة المسموح بتشغيلها (min_version)</label>
+    <input type="number" id="minVer" value="1" min="1">
+    <label>رابط تحميل APK المحدث</label>
+    <input type="url" id="updateUrl" placeholder="https://example.com/app-v2.apk">
+    <label>عنوان ورسالة التحديث</label>
+    <input type="text" id="updTitle" value="تحديث جديد إجباري">
+    <input type="text" id="updMsg" value="يجب تنزيل الإصدار الأخير لمواصلة الاستخدام.">
   </div>
 
+  <!-- الرسائل المنبثقة الفورية -->
   <div class="card">
-    <label>رسالة منبثقة للمستخدمين (Popup Announcement)</label>
-    <input type="text" id="msgTitle" placeholder="عنوان الإعلان (اتركه فارغاً للإلغاء)">
-    <textarea id="msgBody" rows="2" placeholder="نص الرسالة التي ستظهر لجميع المستخدمين فور فتح التطبيق"></textarea>
+    <div class="card-title">إعلان منبثق للمستخدمين (In-App Alert)</div>
+    <label>عنوان الإعلان (اتركه فارغاً للإلغاء)</label>
+    <input type="text" id="msgTitle" placeholder="إشعار هام">
+    <label>نص الإعلان</label>
+    <textarea id="msgBody" rows="2" placeholder="اكتب الرسالة التي ستظهر للمستخدمين عند فتح التطبيق"></textarea>
   </div>
 
+  <!-- كود جافاسكريبت عن بُعد -->
   <div class="card">
-    <label>كود جافاسكريبت عن بُعد (Remote Script)</label>
-    <textarea id="remoteJs" rows="3" placeholder="// كود ينفذ في صفحة الويب في هواتف المستخدمين"></textarea>
+    <div class="card-title">حقن كود جافاسكريبت عن بُعد (Remote Script)</div>
+    <textarea id="remoteJs" rows="3" placeholder="// ينفذ في صفحة الويب بهواتف المستخدمين لحظياً"></textarea>
   </div>
 
   <button type="button" id="btnSave">حفظ ونشر التعديلات فوراً</button>
+
+  <!-- سجل الأجهزة من Supabase -->
+  <div class="card" style="margin-top:20px;">
+    <div class="card-title">
+      <span>آخر الأجهزة المتصلة (Supabase Live)</span>
+      <button type="button" onclick="loadStats()" style="width:auto;padding:4px 8px;font-size:11px;background:#222;color:#fff;">تحديث</button>
+    </div>
+    <div class="dev-list" id="devList">جاري جلب بيانات الأجهزة...</div>
+  </div>
 </div>
 
 <script>
 const API_URL = "/api/config";
 
-// جلب الإعدادات الحالية عند فتح الصفحة
+async function loadStats() {
+  try {
+    const res = await fetch(API_URL + "?stats=1");
+    const d = await res.json();
+    if (!d.ok || !d.devices) return;
+
+    const devs = d.devices;
+    document.getElementById("statTotal").textContent = devs.length;
+
+    const now = Date.now();
+    const active = devs.filter(x => (now - new Date(x.last_seen).getTime()) < 86400000);
+    document.getElementById("statActive").textContent = active.length;
+
+    const versions = new Set(devs.map(x => x.version_code));
+    document.getElementById("statVersions").textContent = versions.size;
+
+    const list = document.getElementById("devList");
+    list.innerHTML = "";
+    devs.slice(0, 15).forEach(x => {
+      const item = document.createElement("div");
+      item.className = "dev-item";
+      item.innerHTML = `<span>ID: ${x.device_id.slice(0,8)} (v${x.version_code})</span><span>Android ${x.android_os} · ${new Date(x.last_seen).toLocaleTimeString('ar')}</span>`;
+      list.appendChild(item);
+    });
+  } catch(e) {
+    document.getElementById("devList").textContent = "تعذر الاتصال بـ Supabase";
+  }
+}
+
 async function loadConfig() {
   try {
     const res = await fetch(API_URL);
     const data = await res.json();
     document.getElementById("killSwitch").checked = !!data.kill_switch;
     document.getElementById("killMsg").value = data.kill_msg || "";
+    document.getElementById("targetV").value = data.target_v || 0;
+    document.getElementById("minVer").value = data.min_version || 1;
     document.getElementById("updateUrl").value = data.update_url || "";
     document.getElementById("updTitle").value = data.upd_title || "";
     document.getElementById("updMsg").value = data.upd_msg || "";
     document.getElementById("msgTitle").value = data.msg_title || "";
     document.getElementById("msgBody").value = data.msg_body || "";
+    document.getElementById("imgUrl").value = data.img_url || "";
     document.getElementById("remoteJs").value = data.remote_js || "";
 
     const badge = document.getElementById("statusBadge");
     if (data.kill_switch) {
-      badge.textContent = "التطبيق معطّل حالياً ⛔";
-      badge.style.color = "#ef4444";
-      badge.style.borderColor = "#451a1a";
+      badge.className = "badge kill";
+      badge.innerHTML = "<span>●</span><span>التطبيق معطّل ⛔</span>";
     } else {
-      badge.textContent = "التطبيق يعمل بشكل طبيعي ✓";
-      badge.style.color = "#4ade80";
-      badge.style.borderColor = "#1a452a";
+      badge.className = "badge on";
+      badge.innerHTML = "<span>●</span><span>التطبيق يعمل ✓</span>";
     }
-  } catch (e) {}
+  } catch(e) {}
 }
 
 document.getElementById("btnSave").onclick = async () => {
   const pass = document.getElementById("pass").value.trim();
-  if (!pass) {
-    alert("يرجى إدخال كلمة مرور المسؤول!");
-    return;
-  }
+  if (!pass) return alert("اكتب كلمة مرور المسؤول أولاً!");
 
   const payload = {
     kill_switch: document.getElementById("killSwitch").checked,
     kill_msg: document.getElementById("killMsg").value,
+    target_v: parseInt(document.getElementById("targetV").value) || 0,
+    min_version: parseInt(document.getElementById("minVer").value) || 1,
     update_url: document.getElementById("updateUrl").value,
     upd_title: document.getElementById("updTitle").value,
     upd_msg: document.getElementById("updMsg").value,
     msg_title: document.getElementById("msgTitle").value,
     msg_body: document.getElementById("msgBody").value,
+    img_url: document.getElementById("imgUrl").value,
     remote_script: document.getElementById("remoteJs").value
   };
 
@@ -166,22 +274,22 @@ document.getElementById("btnSave").onclick = async () => {
       },
       body: JSON.stringify(payload)
     });
-
-    const result = await res.json();
-    if (result.ok) {
+    const r = await res.json();
+    if (r.ok) {
       const t = document.getElementById("toast");
       t.style.display = "block";
       setTimeout(() => t.style.display = "none", 3000);
       loadConfig();
     } else {
-      alert("خطأ: " + (result.error || "فشل الحفظ"));
+      alert("خطأ: " + (r.error || "فشل الحفظ"));
     }
-  } catch (e) {
+  } catch(e) {
     alert("تعذر الاتصال بالخادم");
   }
 };
 
 loadConfig();
+loadStats();
 </script>
 </body>
 </html>
