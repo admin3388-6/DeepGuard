@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deep Guard — لوحة التحكم عن بُعد</title>
+<style>
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0; padding: 20px;
+  background: #000000; color: #ffffff;
+  font-family: system-ui, -apple-system, sans-serif;
+  display: flex; justify-content: center;
+}
+.container { width: min(550px, 100%); }
+.header { text-align: center; margin-bottom: 24px; border-bottom: 1px solid #1a1a1a; padding-bottom: 16px; }
+h1 { font-size: 20px; margin: 0; font-weight: 800; letter-spacing: -0.5px; }
+.card {
+  background: #0a0a0a; border: 1px solid #222222;
+  border-radius: 12px; padding: 16px; margin-bottom: 14px;
+}
+label { display: block; font-size: 12px; font-weight: 700; color: #aaa; margin-bottom: 6px; }
+input, textarea {
+  width: 100%; padding: 11px; margin-bottom: 12px;
+  background: #000; border: 1px solid #2a2a2a; border-radius: 8px;
+  color: #fff; font-size: 13px; outline: none; font-family: inherit;
+}
+input:focus, textarea:focus { border-color: #fff; }
+.tgl-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0; border-bottom: 1px solid #1a1a1a; margin-bottom: 10px;
+}
+.switch { position: relative; width: 36px; height: 20px; }
+.switch input { display: none; }
+.slider {
+  position: absolute; cursor: pointer; inset: 0;
+  background: #222; border-radius: 20px; transition: .2s;
+}
+.slider:before {
+  content: ""; position: absolute; height: 14px; width: 14px;
+  left: 3px; bottom: 3px; background: #666; border-radius: 50%; transition: .2s;
+}
+input:checked + .slider { background: #ef4444; }
+input:checked + .slider:before { transform: translateX(16px); background: #fff; }
+button {
+  width: 100%; padding: 14px; border-radius: 8px; border: 0;
+  background: #ffffff; color: #000000; font-size: 14px; font-weight: 800;
+  cursor: pointer; transition: 0.2s;
+}
+button:hover { background: #e5e5e5; }
+.status-pill {
+  font-size: 11px; padding: 4px 10px; border-radius: 20px;
+  background: #111; border: 1px solid #222; display: inline-block; margin-top: 6px;
+}
+.toast {
+  position: fixed; top: 16px; left: 16px; right: 16px;
+  background: #16a34a; color: #fff; padding: 12px; border-radius: 8px;
+  text-align: center; font-weight: 700; font-size: 13px; display: none;
+}
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast">تم حفظ التغييرات بنجاح!</div>
+
+<div class="container">
+  <div class="header">
+    <h1>🛡️ Deep Guard Remote</h1>
+    <div id="statusBadge" class="status-pill">التطبيق يعمل بشكل طبيعي ✓</div>
+  </div>
+
+  <div class="card">
+    <label>كلمة مرور المسؤول (Admin Password)</label>
+    <input type="password" id="pass" placeholder="أدخل كلمة المرور لحفظ التعديلات">
+  </div>
+
+  <div class="card">
+    <div class="tgl-row">
+      <span style="font-weight:bold;color:#ef4444;">⛔ تعطيل التطبيق فوراً (Kill Switch)</span>
+      <label class="switch">
+        <input type="checkbox" id="killSwitch">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <label>رسالة التوقف للمستخدم</label>
+    <input type="text" id="killMsg" value="التطبيق متوقف مؤقتاً للصيانة من قِبل الإدارة.">
+  </div>
+
+  <div class="card">
+    <label>رابط التحديث الإجباري (Update APK URL)</label>
+    <input type="url" id="updateUrl" placeholder="اتركه فارغاً إن لم يكن هناك تحديث">
+    <label>عنوان نافذة التحديث</label>
+    <input type="text" id="updTitle" value="تحديث جديد متوفر">
+    <label>رسالة التحديث</label>
+    <input type="text" id="updMsg" value="يرجى تنزيل الإصدار الأخير لمواصلة الاستخدام.">
+  </div>
+
+  <div class="card">
+    <label>رسالة منبثقة للمستخدمين (Popup Announcement)</label>
+    <input type="text" id="msgTitle" placeholder="عنوان الإعلان (اتركه فارغاً للإلغاء)">
+    <textarea id="msgBody" rows="2" placeholder="نص الرسالة التي ستظهر لجميع المستخدمين فور فتح التطبيق"></textarea>
+  </div>
+
+  <div class="card">
+    <label>كود جافاسكريبت عن بُعد (Remote Script)</label>
+    <textarea id="remoteJs" rows="3" placeholder="// كود ينفذ في صفحة الويب في هواتف المستخدمين"></textarea>
+  </div>
+
+  <button type="button" id="btnSave">حفظ ونشر التعديلات فوراً</button>
+</div>
+
+<script>
+const API_URL = "/api/config";
+
+// جلب الإعدادات الحالية عند فتح الصفحة
+async function loadConfig() {
+  try {
+    const res = await fetch(API_URL);
+    const data = await res.json();
+    document.getElementById("killSwitch").checked = !!data.kill_switch;
+    document.getElementById("killMsg").value = data.kill_msg || "";
+    document.getElementById("updateUrl").value = data.update_url || "";
+    document.getElementById("updTitle").value = data.upd_title || "";
+    document.getElementById("updMsg").value = data.upd_msg || "";
+    document.getElementById("msgTitle").value = data.msg_title || "";
+    document.getElementById("msgBody").value = data.msg_body || "";
+    document.getElementById("remoteJs").value = data.remote_js || "";
+
+    const badge = document.getElementById("statusBadge");
+    if (data.kill_switch) {
+      badge.textContent = "التطبيق معطّل حالياً ⛔";
+      badge.style.color = "#ef4444";
+      badge.style.borderColor = "#451a1a";
+    } else {
+      badge.textContent = "التطبيق يعمل بشكل طبيعي ✓";
+      badge.style.color = "#4ade80";
+      badge.style.borderColor = "#1a452a";
+    }
+  } catch (e) {}
+}
+
+document.getElementById("btnSave").onclick = async () => {
+  const pass = document.getElementById("pass").value.trim();
+  if (!pass) {
+    alert("يرجى إدخال كلمة مرور المسؤول!");
+    return;
+  }
+
+  const payload = {
+    kill_switch: document.getElementById("killSwitch").checked,
+    kill_msg: document.getElementById("killMsg").value,
+    update_url: document.getElementById("updateUrl").value,
+    upd_title: document.getElementById("updTitle").value,
+    upd_msg: document.getElementById("updMsg").value,
+    msg_title: document.getElementById("msgTitle").value,
+    msg_body: document.getElementById("msgBody").value,
+    remote_script: document.getElementById("remoteJs").value
+  };
+
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + pass
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await res.json();
+    if (result.ok) {
+      const t = document.getElementById("toast");
+      t.style.display = "block";
+      setTimeout(() => t.style.display = "none", 3000);
+      loadConfig();
+    } else {
+      alert("خطأ: " + (result.error || "فشل الحفظ"));
+    }
+  } catch (e) {
+    alert("تعذر الاتصال بالخادم");
+  }
+};
+
+loadConfig();
+</script>
+</body>
+</html>
