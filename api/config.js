@@ -1,4 +1,4 @@
-// api/config.js — Vercel API مع دعم Supabase واستهداف النسخ
+// api/config.js — Vercel Serverless API
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -9,50 +9,46 @@ export default async function handler(req, res) {
   const SUPA_URL = process.env.SUPABASE_URL || "";
   const SUPA_KEY = process.env.SUPABASE_KEY || "";
   const ADMIN_PASS = process.env.ADMIN_PASSWORD || "admin123";
+  const OS_APP_ID = process.env.ONESIGNAL_APP_ID || "";
+  const OS_REST_KEY = process.env.ONESIGNAL_REST_KEY || "";
 
-  // 1. تسجيل نشاط الجهاز القادم من تطبيق Android
   const { v, vn, did, os: androidOs, stats } = req.query;
+
+  // 1. تسجيل نشاط الجهاز في Supabase
   if (req.method === "GET" && did && SUPA_URL && SUPA_KEY) {
-    try {
-      fetch(`${SUPA_URL}/rest/v1/app_devices`, {
-        method: "POST",
-        headers: {
-          "apikey": SUPA_KEY,
-          "Authorization": `Bearer ${SUPA_KEY}`,
-          "Content-Type": "application/json",
-          "Prefer": "resolution=merge-duplicates"
-        },
-        body: JSON.stringify({
-          device_id: did,
-          version_code: parseInt(v) || 1,
-          version_name: vn || "1.0",
-          android_os: parseInt(androidOs) || 0,
-          last_seen: new Date().toISOString()
-        })
-      }).catch(() => {});
-    } catch (e) {}
+    fetch(`${SUPA_URL}/rest/v1/app_devices`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPA_KEY,
+        "Authorization": `Bearer ${SUPA_KEY}`,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates"
+      },
+      body: JSON.stringify({
+        device_id: did,
+        version_code: parseInt(v) || 1,
+        version_name: vn || "1.0",
+        android_os: parseInt(androidOs) || 0,
+        last_seen: new Date().toISOString()
+      })
+    }).catch(() => {});
   }
 
-  // 2. جلب الإحصائيات للوحة التحكم
+  // 2. إرجاع إحصائيات الأجهزة
   if (req.method === "GET" && stats === "1") {
-    if (!SUPA_URL || !SUPA_KEY) {
-      return res.status(200).json({ ok: false, error: "Supabase غير مضبوط" });
-    }
+    if (!SUPA_URL || !SUPA_KEY) return res.status(200).json({ ok: false, error: "Supabase غير متصل" });
     try {
       const resp = await fetch(`${SUPA_URL}/rest/v1/app_devices?select=*&order=last_seen.desc&limit=100`, {
-        headers: {
-          "apikey": SUPA_KEY,
-          "Authorization": `Bearer ${SUPA_KEY}`
-        }
+        headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}` }
       });
       const devices = await resp.json();
       return res.status(200).json({ ok: true, devices });
-    } catch (err) {
-      return res.status(500).json({ ok: false, error: err.message });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
     }
   }
 
-  // 3. إرجاع إعدادات التحكم لتطبيق الهاتف
+  // 3. إرسال الإعدادات لتطبيق الهاتف (قراءة من Supabase)
   if (req.method === "GET") {
     let cfg = {
       kill_switch: false,
@@ -60,26 +56,89 @@ export default async function handler(req, res) {
       target_v: 0,
       min_version: 1,
       update_url: "",
-      upd_title: "تحديث جديد",
-      upd_msg: "يتوفر إصدار جديد للتطبيق، يرجى التحديث لمتابعة الاستخدام.",
+      upd_title: "تحديث جديد متوفر",
+      upd_msg: "يرجى تنزيل الإصدار الأخير.",
       msg_title: "",
       msg_body: "",
       img_url: "",
       remote_js: ""
     };
-    if (process.env.CONFIG_DATA) {
-      try { cfg = JSON.parse(process.env.CONFIG_DATA); } catch (e) {}
+
+    if (SUPA_URL && SUPA_KEY) {
+      try {
+        const sRes = await fetch(`${SUPA_URL}/rest/v1/app_config?id=eq.global&select=config`, {
+          headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}` }
+        });
+        const rows = await sRes.json();
+        if (rows && rows.length > 0 && rows[0].config) {
+          cfg = rows[0].config;
+        }
+      } catch (e) {}
     }
     return res.status(200).json(cfg);
   }
 
-  // 4. حفظ الإعدادات من لوحة التحكم
+  // 4. معالجة طلبات لوحة التحكم (POST)
   if (req.method === "POST") {
     const token = (req.headers["authorization"] || "").replace("Bearer ", "").trim();
     if (token !== ADMIN_PASS) {
       return res.status(401).json({ ok: false, error: "كلمة المرور غير صحيحة" });
     }
-    return res.status(200).json({ ok: true, msg: "تم الحفظ بنجاح" });
+
+    const { action } = req.query;
+
+    // أ) إرسال إشعار فوري عبر OneSignal
+    if (action === "push") {
+      if (!OS_APP_ID || !OS_REST_KEY) {
+        return res.status(400).json({ ok: false, error: "يرجى ضبط ONESIGNAL_APP_ID و ONESIGNAL_REST_KEY في متغيرات Vercel" });
+      }
+      try {
+        const pushBody = req.body;
+        const osRes = await fetch("https://onesignal.com/api/v1/notifications", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Basic ${OS_REST_KEY}`
+          },
+          body: JSON.stringify({
+            app_id: OS_APP_ID,
+            included_segments: ["Total Subscriptions"],
+            headings: { en: pushBody.title, ar: pushBody.title },
+            contents: { en: pushBody.message, ar: pushBody.message },
+            url: pushBody.url || undefined,
+            big_picture: pushBody.img_url || undefined,
+            small_icon: "ic_stat_onesignal_default"
+          })
+        });
+        const osData = await osRes.json();
+        if (osData.errors) {
+          return res.status(400).json({ ok: false, error: JSON.stringify(osData.errors) });
+        }
+        return res.status(200).json({ ok: true, recipients: osData.recipients || 0 });
+      } catch (err) {
+        return res.status(500).json({ ok: false, error: err.message });
+      }
+    }
+
+    // ب) حفظ إعدادات التحكم في Supabase
+    try {
+      const data = req.body;
+      if (SUPA_URL && SUPA_KEY) {
+        await fetch(`${SUPA_URL}/rest/v1/app_config`, {
+          method: "POST",
+          headers: {
+            "apikey": SUPA_KEY,
+            "Authorization": `Bearer ${SUPA_KEY}`,
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates"
+          },
+          body: JSON.stringify({ id: "global", config: data })
+        });
+      }
+      return res.status(200).json({ ok: true, msg: "تم حفظ الإعدادات في Supabase" });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err.message });
+    }
   }
 
   return res.status(405).end();
