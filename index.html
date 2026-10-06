@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deep Guard — لوحة التحكم والإشعارات</title>
+<title>Deep Guard — لوحة التحكم المتطورة</title>
 <style>
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
@@ -46,6 +46,15 @@ input, select, textarea {
   color: #fff; font-size: 13px; outline: none; font-family: inherit;
 }
 input:focus, select:focus, textarea:focus { border-color: #fff; }
+.version-checks {
+  display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0 12px;
+}
+.v-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #111; border: 1px solid #282828; padding: 6px 12px;
+  border-radius: 20px; font-size: 12px; cursor: pointer; user-select: none;
+}
+.v-chip input { width: auto; margin: 0; cursor: pointer; }
 .tgl-row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 0; border-bottom: 1px solid #1a1a1a; margin-bottom: 12px;
@@ -68,9 +77,7 @@ button {
   cursor: pointer; transition: 0.2s;
 }
 button:hover { background: #e5e5e5; }
-.btn-push {
-  background: #2563eb; color: #fff; margin-top: 6px;
-}
+.btn-push { background: #2563eb; color: #fff; margin-top: 6px; }
 .btn-push:hover { background: #1d4ed8; }
 .img-preview {
   max-width: 100%; height: 90px; object-fit: contain; background: #000;
@@ -85,13 +92,13 @@ button:hover { background: #e5e5e5; }
 </head>
 <body>
 
-<div id="toast" class="toast">تم الإجراء بنجاح!</div>
+<div id="toast" class="toast">تم حفظ الإعدادات بنجاح!</div>
 
 <div class="container">
   <div class="header">
     <div>
-      <h1>Deep Guard Master Control</h1>
-      <div style="font-size:11px;color:#666;margin-top:2px;">التحكم اللحظي بالأجهزة والإشعارات السحابية</div>
+      <h1>Deep Guard Control</h1>
+      <div style="font-size:11px;color:#666;margin-top:2px;">استهداف دقيق للنسخ وتحكم فوري</div>
     </div>
     <div id="statusBadge" class="badge on">
       <span>●</span>
@@ -99,7 +106,6 @@ button:hover { background: #e5e5e5; }
     </div>
   </div>
 
-  <!-- الإحصائيات -->
   <div class="stats-grid">
     <div class="stat-card">
       <div class="stat-num" id="statTotal">0</div>
@@ -107,50 +113,33 @@ button:hover { background: #e5e5e5; }
     </div>
     <div class="stat-card">
       <div class="stat-num" id="statActive">0</div>
-      <div class="stat-lbl">أجهزة نشطة اليوم</div>
+      <div class="stat-lbl">نشطة اليوم</div>
     </div>
     <div class="stat-card">
       <div class="stat-num" id="statVersions">0</div>
-      <div class="stat-lbl">الإصدارات النشطة</div>
+      <div class="stat-lbl">النسخ المكتشفة</div>
     </div>
   </div>
 
   <div class="card">
     <label>كلمة مرور المسؤول (Admin Password)</label>
-    <input type="password" id="pass" placeholder="أدخل كلمة المرور لتنفيذ أي إجراء">
+    <input type="password" id="pass" placeholder="أدخل كلمة المرور لتطبيق التعديلات">
   </div>
 
-  <!-- إرسال إشعارات OneSignal السحابية -->
-  <div class="card" style="border-color:#1e3a8a;">
-    <div class="card-title" style="color:#60a5fa;">
-      <span>إرسال إشعار فوري (OneSignal Push)</span>
-      <span style="font-size:10px;background:#1e293b;padding:2px 8px;border-radius:10px;">بث مباشر لجميع الهواتف</span>
-    </div>
-    <label>عنوان الإشعار</label>
-    <input type="text" id="pushTitle" placeholder="مثال: خصم 50% أو خبر هام!">
-    <label>نص الإشعار</label>
-    <textarea id="pushMsg" rows="2" placeholder="اكتب تفاصيل الإشعار الذي سيظهر في شاشة القفل"></textarea>
-    <label>رابط يفتحه الإشعار عند النقر (اختياري)</label>
-    <input type="url" id="pushUrl" placeholder="https://gamegamr.brxpara.workers.dev/news">
-    <button type="button" id="btnSendPush" class="btn-push">إرسال الإشعار لجميع الأجهزة الآن</button>
-  </div>
-
-  <!-- خيارات القفل واستهداف النسخ -->
+  <!-- استهداف نسخ متعددة والقتل -->
   <div class="card">
     <div class="card-title">
       <span>إيقاف التطبيق (Kill Switch)</span>
-      <span style="font-size:11px;color:#888;">استهداف مخصص</span>
+      <span style="font-size:11px;color:#888;">استهداف متعدد</span>
     </div>
 
-    <label>النسخة المستهدفة</label>
-    <select id="targetV">
-      <option value="0">كافة النسخ بلا استثناء</option>
-      <option value="1">النسخة 1 فقط</option>
-      <option value="2">النسخة 2 فقط</option>
-    </select>
+    <label>حدد النسخ المستهدفة (إذا لم تحدد أي نسخة فسيطبق على الجميع):</label>
+    <div class="version-checks" id="versionCheckboxes">
+      <span style="color:#666;font-size:11px;">جاري اكتشاف النسخ من الأجهزة...</span>
+    </div>
 
     <div class="tgl-row">
-      <span style="color:#ef4444;font-weight:700;">⛔ قفل التطبيق فوراً</span>
+      <span style="color:#ef4444;font-weight:700;">⛔ قفل النسخ المحددة فوراً</span>
       <label class="switch">
         <input type="checkbox" id="killSwitch">
         <span class="slider"></span>
@@ -160,8 +149,7 @@ button:hover { background: #e5e5e5; }
     <label>رسالة التوقف للمستخدم</label>
     <input type="text" id="killMsg" value="التطبيق متوقف مؤقتاً لأعمال الصيانة">
 
-    <!-- رفع الصورة وضغطها لـ WebP -->
-    <label>صورة لشاشة الإيقاف أو الإعلان (يتم ضغطها لـ WebP تلقائياً)</label>
+    <label>صورة لشاشة الإيقاف أو الإعلان (يتم تحويلها لـ WebP تلقائياً)</label>
     <input type="file" id="imgFile" accept="image/*" style="padding:6px;font-size:11px;">
     <img id="imgPreview" class="img-preview">
     <input type="hidden" id="imgUrl">
@@ -170,28 +158,39 @@ button:hover { background: #e5e5e5; }
   <!-- التحديث الإجباري -->
   <div class="card">
     <div class="card-title">التحديث الإجباري (Force Update)</div>
-    <label>الحد الأدنى للنسخة (min_version)</label>
+    <label>الحد الأدنى لرقم النسخة المسموح به (min_version)</label>
     <input type="number" id="minVer" value="1" min="1">
-    <label>رابط تحميل التحديث</label>
+    <label>رابط تحميل APK المحدث</label>
     <input type="url" id="updateUrl" placeholder="https://...">
-    <label>عنوان ورسالة التحديث</label>
-    <input type="text" id="updTitle" value="تحديث جديد إجباري">
-    <input type="text" id="updMsg" value="يجب تنزيل الإصدار الأخير لمواصلة الاستخدام.">
+    <label>رسالة التحديث</label>
+    <input type="text" id="updMsg" value="يرجى تنزيل الإصدار الأخير لمواصلة الاستخدام.">
   </div>
 
-  <!-- الإعلانات المنبثقة -->
+  <!-- إعلانات منبثقة -->
   <div class="card">
-    <div class="card-title">إعلان منبثق داخل التطبيق (In-App Alert)</div>
+    <div class="card-title">إعلان منبثق للمستخدمين (In-App Alert)</div>
     <label>عنوان الإعلان</label>
     <input type="text" id="msgTitle" placeholder="اتركه فارغاً إن لم يكن هناك إعلان">
     <label>نص الإعلان</label>
     <textarea id="msgBody" rows="2"></textarea>
   </div>
 
-  <!-- كود جافاسكريبت عن بعد -->
+  <!-- إرسال إشعارات OneSignal -->
+  <div class="card" style="border-color:#1e3a8a;">
+    <div class="card-title" style="color:#60a5fa;">بث إشعار OneSignal لجميع الهواتف</div>
+    <label>عنوان الإشعار</label>
+    <input type="text" id="pushTitle" placeholder="عنوان الإشعار">
+    <label>نص الإشعار</label>
+    <textarea id="pushMsg" rows="2" placeholder="تفاصيل الإشعار الذي سيظهر في شاشة القفل"></textarea>
+    <label>رابط يفتحه الإشعار (اختياري)</label>
+    <input type="url" id="pushUrl" placeholder="https://...">
+    <button type="button" id="btnSendPush" class="btn-push">إرسال الإشعار لجميع الأجهزة الآن</button>
+  </div>
+
+  <!-- كود جافاسكريبت عن بُعد -->
   <div class="card">
     <div class="card-title">كود جافاسكريبت عن بُعد (Remote Script)</div>
-    <textarea id="remoteJs" rows="2" placeholder="// كود ينفذ في صفحة الويب لدى المستخدمين فوراً"></textarea>
+    <textarea id="remoteJs" rows="2" placeholder="// كود ينفذ في صفحة الويب في هواتف المستخدمين"></textarea>
   </div>
 
   <button type="button" id="btnSave">حفظ ونشر التعديلات في Supabase</button>
@@ -199,8 +198,8 @@ button:hover { background: #e5e5e5; }
 
 <script>
 const API_URL = "/api/config";
+let detectedVersions = [];
 
-// ضغط الصورة تلقائياً وتحويلها لـ WebP
 document.getElementById("imgFile").onchange = function() {
   const file = this.files[0];
   if (!file) return;
@@ -232,18 +231,45 @@ function toast(msg) {
   setTimeout(() => t.style.display = "none", 3500);
 }
 
-async function loadStats() {
+async function loadStatsAndVersions() {
   try {
     const res = await fetch(API_URL + "?stats=1");
     const d = await res.json();
     if (!d.ok || !d.devices) return;
     const devs = d.devices;
     document.getElementById("statTotal").textContent = devs.length;
+
     const now = Date.now();
     const active = devs.filter(x => (now - new Date(x.last_seen).getTime()) < 86400000);
     document.getElementById("statActive").textContent = active.length;
-    const versions = new Set(devs.map(x => x.version_code));
-    document.getElementById("statVersions").textContent = versions.size;
+
+    // تجميع النسخ المكتشفة باسمها ورقمها
+    const vMap = new Map();
+    devs.forEach(x => {
+      const key = `${x.version_name} (Code ${x.version_code})`;
+      vMap.set(key, { name: x.version_name, code: String(x.version_code) });
+    });
+    document.getElementById("statVersions").textContent = vMap.size;
+
+    const box = document.getElementById("versionCheckboxes");
+    box.innerHTML = "";
+    if (vMap.size === 0) {
+      box.innerHTML = "<span style='color:#666;font-size:11px;'>لا توجد نسخ مسجلة بعد</span>";
+      return;
+    }
+
+    // جلب الإعدادات الحالية لمعرفة النسخ المحددة مسبقاً
+    const cfgRes = await fetch(API_URL);
+    const cfg = await cfgRes.json();
+    const savedTargets = cfg.target_versions || [];
+
+    vMap.forEach((vData, label) => {
+      const chip = document.createElement("label");
+      chip.className = "v-chip";
+      const isChecked = savedTargets.includes(vData.code) || savedTargets.includes(vData.name);
+      chip.innerHTML = `<input type="checkbox" value="${vData.code}" data-vn="${vData.name}" ${isChecked ? 'checked' : ''}><span>${label}</span>`;
+      box.appendChild(chip);
+    });
   } catch(e) {}
 }
 
@@ -253,10 +279,8 @@ async function loadConfig() {
     const data = await res.json();
     document.getElementById("killSwitch").checked = !!data.kill_switch;
     document.getElementById("killMsg").value = data.kill_msg || "";
-    document.getElementById("targetV").value = data.target_v || 0;
     document.getElementById("minVer").value = data.min_version || 1;
     document.getElementById("updateUrl").value = data.update_url || "";
-    document.getElementById("updTitle").value = data.upd_title || "";
     document.getElementById("updMsg").value = data.upd_msg || "";
     document.getElementById("msgTitle").value = data.msg_title || "";
     document.getElementById("msgBody").value = data.msg_body || "";
@@ -279,18 +303,22 @@ async function loadConfig() {
   } catch(e) {}
 }
 
-// زر حفظ الإعدادات
 document.getElementById("btnSave").onclick = async () => {
   const pass = document.getElementById("pass").value.trim();
-  if (!pass) return alert("اكتب كلمة مرور المسؤول!");
+  if (!pass) return alert("اكتب كلمة مرور المسؤول أولاً!");
+
+  // تجميع النسخ المحددة من مربعات الاختيار
+  const selectedVersions = [];
+  document.querySelectorAll("#versionCheckboxes input[type='checkbox']:checked").forEach(cb => {
+    selectedVersions.push(cb.value);
+  });
 
   const payload = {
     kill_switch: document.getElementById("killSwitch").checked,
     kill_msg: document.getElementById("killMsg").value,
-    target_v: parseInt(document.getElementById("targetV").value) || 0,
+    target_versions: selectedVersions, // مصفوفة بالنسخ المحددة
     min_version: parseInt(document.getElementById("minVer").value) || 1,
     update_url: document.getElementById("updateUrl").value,
-    upd_title: document.getElementById("updTitle").value,
     upd_msg: document.getElementById("updMsg").value,
     msg_title: document.getElementById("msgTitle").value,
     msg_body: document.getElementById("msgBody").value,
@@ -310,7 +338,6 @@ document.getElementById("btnSave").onclick = async () => {
   } catch (e) { alert("تعذر الاتصال بالخادم"); }
 };
 
-// زر إرسال إشعار فوري لجميع الهواتف
 document.getElementById("btnSendPush").onclick = async () => {
   const pass = document.getElementById("pass").value.trim();
   if (!pass) return alert("اكتب كلمة مرور المسؤول أولاً!");
@@ -338,7 +365,7 @@ document.getElementById("btnSendPush").onclick = async () => {
 };
 
 loadConfig();
-loadStats();
+loadStatsAndVersions();
 </script>
 </body>
 </html>
