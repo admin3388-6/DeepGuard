@@ -108,13 +108,17 @@ export default async function handler(req, res) {
     let cfg = {
       kill_switch: false,
       kill_msg: "التطبيق متوقف مؤقتاً لأعمال الصيانة",
-      target_versions: [], // فارغ = كل النسخ، أو مصفوفة بالنسخ المحددة
+      target_versions: [],
+      killed_versions: [], // قائمة دقيقة للنسخ المحظورة
       min_version: 1,
       update_url: "",
       upd_title: "تحديث جديد",
       upd_msg: "يتوفر إصدار جديد للتطبيق، يرجى التحديث لمتابعة الاستخدام.",
       msg_title: "",
       msg_body: "",
+      msg_img: "",
+      msg_btn: "",
+      msg_btn_url: "",
       img_url: "",
       remote_js: ""
     };
