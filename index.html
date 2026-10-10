@@ -153,33 +153,38 @@ button:hover { background: #e5e5e5; }
     <input type="password" id="pass" placeholder="أدخل كلمة المرور لتطبيق التعديلات">
   </div>
 
-  <!-- استهداف نسخ متعددة والقتل -->
+  <!-- نظام إدارة الإصدارات المتقدم والـ Kill Switch المخصص -->
   <div class="card">
     <div class="card-title">
-      <span>إيقاف التطبيق (Kill Switch)</span>
-      <span style="font-size:11px;color:#888;">استهداف متعدد</span>
-    </div>
-
-    <label>حدد النسخ المستهدفة (إذا لم تحدد أي نسخة فسيطبق على الجميع):</label>
-    <div class="version-checks" id="versionCheckboxes">
-      <span style="color:#666;font-size:11px;">جاري اكتشاف النسخ من الأجهزة...</span>
+      <span>إدارة وحظر الإصدارات (Version Life-Cycle)</span>
+      <span style="font-size:11px;color:#4ade80;">تحكم فردي وجماعي</span>
     </div>
 
     <div class="tgl-row">
-      <span style="color:#ef4444;font-weight:700;">⛔ قفل النسخ المحددة فوراً</span>
+      <span style="color:#ef4444;font-weight:700;">⛔ إيقاف التطبيق العام (لجميع الهواتف)</span>
       <label class="switch">
         <input type="checkbox" id="killSwitch">
         <span class="slider"></span>
       </label>
     </div>
 
-    <label>رسالة التوقف للمستخدم</label>
+    <label>رسالة التوقف المعروضة</label>
     <input type="text" id="killMsg" value="التطبيق متوقف مؤقتاً لأعمال الصيانة">
 
-    <label>صورة لشاشة الإيقاف أو الإعلان (يتم تحويلها لـ WebP تلقائياً)</label>
+    <label>صورة شاشة التوقف الإجبارية (اختياري)</label>
     <input type="file" id="imgFile" accept="image/*" style="padding:6px;font-size:11px;">
     <img id="imgPreview" class="img-preview">
     <input type="hidden" id="imgUrl">
+
+    <div style="margin-top:14px;border-top:1px solid #1a1a1a;padding-top:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <label style="margin:0;">حالة النسخ المكتشفة في الشبكة:</label>
+        <span style="font-size:10px;color:#888;" id="verCountBadge">0 نسخ</span>
+      </div>
+      <div id="versionsContainer" style="display:flex;flex-direction:column;gap:6px;">
+        <span style="color:#666;font-size:11px;">جاري تحليل سجلات النسخ بدون تكرار…</span>
+      </div>
+    </div>
   </div>
 
   <!-- التحديث الإجباري -->
@@ -193,13 +198,30 @@ button:hover { background: #e5e5e5; }
     <input type="text" id="updMsg" value="يرجى تنزيل الإصدار الأخير لمواصلة الاستخدام.">
   </div>
 
-  <!-- إعلانات منبثقة -->
-  <div class="card">
-    <div class="card-title">إعلان منبثق للمستخدمين (In-App Alert)</div>
-    <label>عنوان الإعلان</label>
-    <input type="text" id="msgTitle" placeholder="اتركه فارغاً إن لم يكن هناك إعلان">
-    <label>نص الإعلان</label>
-    <textarea id="msgBody" rows="2"></textarea>
+  <!-- إعلانات منبثقة تفاعلية فخمة -->
+  <div class="card" style="border-color:#1e293b;">
+    <div class="card-title" style="color:#38bdf8;">📢 نافذة إعلانية منبثقة فخمة (In-Game Modal)</div>
+    <label>عنوان الإعلان (فوق الصورة أو اتركه فارغاً)</label>
+    <input type="text" id="msgTitle" placeholder="عرض خاص، تنبيه هام، مكافأة…">
+    
+    <label>صورة الإعلان (تظهر بمنتصف النافذة المنبثقة)</label>
+    <input type="file" id="adImgFile" accept="image/*" style="padding:6px;font-size:11px;">
+    <img id="adImgPreview" class="img-preview">
+    <input type="hidden" id="adImgUrl">
+
+    <label>نص وتفاصيل الإعلان (اختياري)</label>
+    <textarea id="msgBody" rows="2" placeholder="اكتب تفاصيل الإعلان هنا…"></textarea>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div>
+        <label>نص زر الإجراء (CTA Button)</label>
+        <input type="text" id="msgBtn" placeholder="مثل: زيارة الرابط، فتح المتجر">
+      </div>
+      <div>
+        <label>رابط يفتحه الزر</label>
+        <input type="url" id="msgBtnUrl" placeholder="https://...">
+      </div>
+    </div>
   </div>
 
   <!-- إرسال إشعارات OneSignal -->
@@ -363,6 +385,8 @@ document.getElementById("btnInitDb").onclick = async () => {
   } catch(e) { alert("تعذر الاتصال بالخادم"); }
 };
 
+let currentKilledVersions = [];
+
 async function loadStatsAndVersions() {
   if (!adminToken) return;
   try {
@@ -377,31 +401,64 @@ async function loadStatsAndVersions() {
     const active = devs.filter(x => x.last_seen && (now - new Date(x.last_seen).getTime()) < 86400000);
     document.getElementById("statActive").textContent = active.length;
 
-    const vMap = new Map();
+    // تجميع النسخ بدون تكرار مع إحصائيات الأجهزة لكل نسخة
+    const vStats = new Map();
     devs.forEach(x => {
-      const vName = x.version_name || "1.0";
       const vCode = String(x.version_code || "1");
-      const key = `${vName} (Code ${vCode})`;
-      vMap.set(key, { name: vName, code: vCode });
+      const vName = String(x.version_name || "1.0");
+      const key = vCode; // المفتاح الفريد الصارم لمنع أي تكرار
+      if (!vStats.has(key)) {
+        vStats.set(key, { code: vCode, name: vName, count: 0, active24: 0, lastSeen: x.last_seen });
+      }
+      const st = vStats.get(key);
+      st.count++;
+      if (x.last_seen && (now - new Date(x.last_seen).getTime()) < 86400000) st.active24++;
     });
-    document.getElementById("statVersions").textContent = vMap.size;
 
-    const box = document.getElementById("versionCheckboxes");
-    box.innerHTML = "";
-    if (vMap.size === 0) {
-      box.innerHTML = "<span style='color:#666;font-size:11px;'>لا توجد نسخ مسجلة بعد</span>";
-    }
+    document.getElementById("statVersions").textContent = vStats.size;
+    document.getElementById("verCountBadge").textContent = `${vStats.size} نسخ مكتشفة`;
 
     const cfgRes = await fetch(API_URL);
     const cfg = await cfgRes.json();
-    const savedTargets = Array.isArray(cfg.target_versions) ? cfg.target_versions.map(String) : [];
+    currentKilledVersions = Array.isArray(cfg.killed_versions) ? cfg.killed_versions.map(String) : [];
 
-    vMap.forEach((vData, label) => {
-      const chip = document.createElement("label");
-      chip.className = "v-chip";
-      const isChecked = savedTargets.includes(String(vData.code)) || savedTargets.includes(String(vData.name));
-      chip.innerHTML = `<input type="checkbox" value="${vData.code}" data-vn="${vData.name}" ${isChecked ? 'checked' : ''}><span>${label}</span>`;
-      box.appendChild(chip);
+    const container = document.getElementById("versionsContainer");
+    container.innerHTML = "";
+    if (vStats.size === 0) {
+      container.innerHTML = "<span style='color:#666;font-size:11px;'>لا توجد أجهزة مسجلة بعد في الشبكة.</span>";
+      return;
+    }
+
+    vStats.forEach((v) => {
+      const isKilled = currentKilledVersions.includes(v.code) || currentKilledVersions.includes(v.name);
+      const row = document.createElement("div");
+      row.style.cssText = `display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:#0d0d0d;border-radius:8px;border:1px solid ${isKilled ? '#451a1a' : '#1e293b'};`;
+      row.innerHTML = `
+        <div>
+          <div style="font-weight:700;font-size:12px;color:${isKilled ? '#f87171' : '#4ade80'};">
+            ${isKilled ? '⛔ نسخة معطلة' : '✓ نسخة نشطة'}: v${v.name} (Code: ${v.code})
+          </div>
+          <div style="font-size:10px;color:#777;margin-top:2px;">
+            إجمالي الأجهزة: ${v.count} · نشطة اليوم: ${v.active24}
+          </div>
+        </div>
+        <button type="button" class="btn-toggle-ver" data-code="${v.code}" style="width:auto;padding:6px 12px;font-size:11px;border-radius:6px;background:${isKilled ? '#22c55e' : '#ef4444'};color:#fff;">
+          ${isKilled ? 'استعادة وتفعيل' : 'إيقاف النسخة'}
+        </button>
+      `;
+      container.appendChild(row);
+    });
+
+    document.querySelectorAll(".btn-toggle-ver").forEach(btn => {
+      btn.onclick = () => {
+        const c = btn.dataset.code;
+        if (currentKilledVersions.includes(c)) {
+          currentKilledVersions = currentKilledVersions.filter(x => x !== c);
+        } else {
+          currentKilledVersions.push(c);
+        }
+        document.getElementById("btnSave").click();
+      };
     });
 
     renderDevicesList(devs);
@@ -409,6 +466,31 @@ async function loadStatsAndVersions() {
     console.error("loadStatsAndVersions error:", e);
   }
 }
+// محول صور الإعلانات المنبثقة
+document.getElementById("adImgFile").onchange = function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement("canvas");
+      const maxDim = 600;
+      let w = img.width, h = img.height;
+      if (w > h && w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
+      else if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      const webp = canvas.toDataURL("image/webp", 0.85);
+      document.getElementById("adImgUrl").value = webp;
+      const prev = document.getElementById("adImgPreview");
+      prev.src = webp; prev.style.display = "block";
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
 async function loadConfig() {
   try {
     const res = await fetch(API_URL);
@@ -420,8 +502,16 @@ async function loadConfig() {
     document.getElementById("updMsg").value = data.upd_msg || "";
     document.getElementById("msgTitle").value = data.msg_title || "";
     document.getElementById("msgBody").value = data.msg_body || "";
+    document.getElementById("msgBtn").value = data.msg_btn || "";
+    document.getElementById("msgBtnUrl").value = data.msg_btn_url || "";
+    document.getElementById("adImgUrl").value = data.msg_img || "";
     document.getElementById("imgUrl").value = data.img_url || "";
     document.getElementById("remoteJs").value = data.remote_js || "";
+
+    if (data.msg_img) {
+      const prevAd = document.getElementById("adImgPreview");
+      prevAd.src = data.msg_img; prevAd.style.display = "block";
+    }
 
     if (data.img_url) {
       const prev = document.getElementById("imgPreview");
@@ -452,12 +542,15 @@ document.getElementById("btnSave").onclick = async () => {
   const payload = {
     kill_switch: document.getElementById("killSwitch").checked,
     kill_msg: document.getElementById("killMsg").value,
-    target_versions: selectedVersions, // مصفوفة بالنسخ المحددة
+    killed_versions: currentKilledVersions,
     min_version: parseInt(document.getElementById("minVer").value) || 1,
     update_url: document.getElementById("updateUrl").value,
     upd_msg: document.getElementById("updMsg").value,
     msg_title: document.getElementById("msgTitle").value,
     msg_body: document.getElementById("msgBody").value,
+    msg_img: document.getElementById("adImgUrl").value,
+    msg_btn: document.getElementById("msgBtn").value,
+    msg_btn_url: document.getElementById("msgBtnUrl").value,
     img_url: document.getElementById("imgUrl").value,
     remote_js: document.getElementById("remoteJs").value
   };
