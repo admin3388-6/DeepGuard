@@ -2,8 +2,8 @@
   "version": 2,
   "routes": [
     {
-      "src": "/api/config",
-      "dest": "/api/config.js"
+      "src": "/api/config(.*)",
+      "dest": "/api/config.js$1"
     },
     {
       "src": "/(.*)",

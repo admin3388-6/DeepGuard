@@ -260,7 +260,7 @@ async function loadStatsAndVersions() {
   try {
     const res = await fetch(API_URL + "?stats=1");
     const d = await res.json();
-    if (!d.ok || !d.devices) return;
+    if (!d.ok || !Array.isArray(d.devices)) return;
     const devs = d.devices;
     document.getElementById("statTotal").textContent = devs.length;
 
@@ -389,74 +389,7 @@ document.getElementById("btnSendPush").onclick = async () => {
   } catch(e) { alert("تعذر الاتصال بالسيرفر"); }
 };
 
-/* ================= AI Chat (موحّد) ================= */
-let aiMsgs=[]; let aiBusy=false;
-try{ aiMsgs=JSON.parse(localStorage.getItem('ai_chat_builder')||'[]'); }catch(e){ aiMsgs=[]; }
-function aiSave(){ try{ localStorage.setItem('ai_chat_builder',JSON.stringify(aiMsgs.slice(-80))); }catch(e){} }
-function aiEmpty(){
-  const log=$('aiChatLog'); log.textContent='';
-  const d=el('div',null,'ابدأ محادثة ✨ — اسأل عن البناء والأخطاء، أو فعّل وضع الوكيل 🕵️ ليحلل السجلات بنفسه');
-  d.id='aiEmpty'; d.style.cssText='color:#555;font-size:12px;text-align:center;margin:auto;padding:10px';
-  log.appendChild(d);
-}
-function aiBubble(text,kind){
-  const log=$('aiChatLog'); const em=$('aiEmpty'); if(em)em.remove();
-  const b=el('div',null,null);
-  const base='padding:10px 12px;border-radius:12px;font-size:12px;line-height:1.8;max-width:85%;white-space:pre-wrap;word-break:break-word;';
-  if(kind==='u')b.style.cssText=base+'background:#fff;color:#000;align-self:flex-start;border-bottom-right-radius:2px;';
-  else if(kind==='e')b.style.cssText=base+'background:#1c0a0a;border:1px solid #ef4444;color:#f87171;align-self:flex-end;border-bottom-left-radius:2px;';
-  else b.style.cssText=base+'background:#0d1526;border:1px solid #1e3a5e;color:#bfdbfe;align-self:flex-end;border-bottom-left-radius:2px;';
-  b.textContent=text; log.appendChild(b); log.scrollTop=log.scrollHeight; return b;
-}
-function aiRender(){
-  if(!aiMsgs.length){ aiEmpty(); return; }
-  const log=$('aiChatLog'); log.textContent='';
-  aiMsgs.forEach(m=>aiBubble(m.text,m.who));
-  log.scrollTop=log.scrollHeight;
-}
-function aiStatus(t,c){ const s=$('aiStatus'); s.textContent=t||''; s.style.color=c||'#888'; }
-async function aiSend(){
-  const inp=$('aiChatInp'); const msg=inp.value.trim();
-  if(!msg)return;
-  if(aiBusy){ toast('⏳ انتظر رد AI الحالي أولاً','inf'); return; }
-  aiBusy=true; inp.value='';
-  aiMsgs.push({who:'u',text:msg}); aiSave(); aiBubble(msg,'u');
-  const think=aiBubble('🤖 يفكر…','a');
-  aiStatus('⏳ يفكر…','#eab308');
-  const agentMode=$('aiAgentMode')&&$('aiAgentMode').checked;
-  try{
-    const fd=new FormData(); fd.append('message',msg);
-    if(agentMode&&current&&current.lastBuildId)fd.append('context','المشروع: '+(current.appName||'')+' | آخر بناء: '+current.lastBuildId+' | الحالة: '+(current.lastBuildStatus||''));
-    const r=await fetch(agentMode?'/ai/agent':'/ai/chat',{method:'POST',body:fd});
-    const d=await r.json();
-    think.remove();
-    if(d.ok){ aiMsgs.push({who:'a',text:d.answer}); aiSave(); aiBubble(d.answer,'a'); aiStatus('✓ تم','#22c55e'); }
-    else{ aiMsgs.push({who:'e',text:d.error||'خطأ'}); aiSave(); aiBubble('⚠ '+(d.error||'خطأ'),'e'); aiStatus('✗ فشل','#ef4444'); }
-  }catch(e){ think.remove(); aiBubble('⚠ تعذر الاتصال بالخادم','e'); aiStatus('✗ لا اتصال','#ef4444'); }
-  aiBusy=false; renderMem();
-}
-$('aiChatSend').onclick=aiSend;
-$('aiChatInp').addEventListener('keydown',e=>{ if(e.key==='Enter')aiSend(); });
-$('btnAiNew').onclick=()=>{ aiMsgs=[]; aiSave(); aiRender(); aiStatus('',''); toast('تم بدء دردشة جديدة','suc'); };
-async function renderMem(){
-  try{
-    const q=$('memQ').value.trim();
-    const r=await fetch('/ai/memory'+(q?('?q='+encodeURIComponent(q)):''));
-    const d=await r.json(); const box=$('memList'); box.textContent='';
-    if(!d.memories||!d.memories.length){ box.textContent='الذاكرة فارغة.'; return; }
-    d.memories.slice().reverse().forEach(m=>{
-      const row=el('div',null,null);
-      row.style.cssText='display:flex;gap:8px;align-items:flex-start;border-bottom:1px solid #161616;padding:6px 0;';
-      const txt=el('span',null,'['+m.key+'] '+String(m.content).slice(0,140)+' — '+(m.at||''));
-      txt.style.flex='1'; row.appendChild(txt);
-      const del=el('button','btn btn-sm btn-dan','حذف'); del.style.width='auto'; del.style.padding='4px 8px';
-      del.onclick=async()=>{ const fd=new FormData(); fd.append('key',m.key); await fetch('/ai/memory/delete',{method:'POST',body:fd}); renderMem(); };
-      row.appendChild(del); box.appendChild(row);
-    });
-  }catch(e){}
-}
-$('memSearchBtn').onclick=renderMem;
-aiRender(); renderMem();
+// تم تنظيف الكود الدخيل الذي كان يوقف محرك الجافاسكريبت
 
 
 /* ================= AI Chat (Deep Guard) ================= */
@@ -464,9 +397,21 @@ let aiRMsgs=[]; let aiRBusy=false;
 try{ aiRMsgs=JSON.parse(localStorage.getItem('ai_chat_remote')||'[]'); }catch(e){ aiRMsgs=[]; }
 function aiRSave(){ try{ localStorage.setItem('ai_chat_remote',JSON.stringify(aiRMsgs.slice(-80))); }catch(e){} }
 function aiRHead(){
-  const pass=document.getElementById("pass").value.trim();
-  if(!pass){ alert("اكتب كلمة مرور المسؤول أولاً!"); return null; }
+  const pInput = document.getElementById("pass");
+  const pass = pInput ? pInput.value.trim() : "";
+  if(!pass){
+    alert("اكتب كلمة مرور المسؤول في الحقل بالأعلى أولاً!");
+    if(pInput) { pInput.focus(); pInput.scrollIntoView({ behavior: "smooth", block: "center" }); }
+    return null;
+  }
   return { "Content-Type":"application/json","Authorization":"Bearer "+pass };
+}
+
+// حفظ كلمة المرور في الجلسة لتجنب إعادة كتابتها في كل مرة
+const pField = document.getElementById("pass");
+if (pField) {
+  pField.value = sessionStorage.getItem("dg_admin_pass") || "";
+  pField.addEventListener("input", e => sessionStorage.setItem("dg_admin_pass", e.target.value.trim()));
 }
 function aiRBubble(text,kind){
   const log=document.getElementById("aiRLog");
