@@ -103,22 +103,26 @@ export default async function handler(req, res) {
     }
   }
 
-  // 3. إرسال الإعدادات لتطبيق الهاتف
+  // 3. إرسال الإعدادات لتطبيق الهاتف مع نظام المؤقت والاستهداف
   if (req.method === "GET") {
     let cfg = {
       kill_switch: false,
       kill_msg: "التطبيق متوقف مؤقتاً لأعمال الصيانة",
       target_versions: [],
-      killed_versions: [], // قائمة دقيقة للنسخ المحظورة
+      killed_versions: [],
       min_version: 1,
       update_url: "",
       upd_title: "تحديث جديد",
       upd_msg: "يتوفر إصدار جديد للتطبيق، يرجى التحديث لمتابعة الاستخدام.",
+      msg_active: false,
       msg_title: "",
       msg_body: "",
       msg_img: "",
       msg_btn: "",
       msg_btn_url: "",
+      msg_expires_at: 0,
+      msg_target_audience: "all",
+      msg_target_devices: [],
       img_url: "",
       remote_js: ""
     };
@@ -155,6 +159,47 @@ export default async function handler(req, res) {
     if (action === "init_db") {
       const r = await bootstrapDatabase();
       return res.status(200).json(r);
+    }
+
+    // رفع صور الإعلانات إلى Supabase Storage
+    if (action === "upload_ad_img") {
+      const { img_base64, old_file_name } = req.body || {};
+      if (!img_base64 || !SUPA_URL || !SUPA_KEY) {
+        return res.status(400).json({ ok: false, error: "بيانات ناقصة" });
+      }
+      try {
+        const b64 = img_base64.replace(/^data:image\/\w+;base64,/, "");
+        const buf = Buffer.from(b64, "base64");
+        const fileName = `ad_${Date.now()}.webp`;
+
+        // حذف الصورة القديمة إن وجدت
+        if (old_file_name) {
+          fetch(`${SUPA_URL}/storage/v1/object/ad_images/${old_file_name}`, {
+            method: "DELETE",
+            headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}` }
+          }).catch(() => {});
+        }
+
+        const upRes = await fetch(`${SUPA_URL}/storage/v1/object/ad_images/${fileName}`, {
+          method: "POST",
+          headers: {
+            "apikey": SUPA_KEY,
+            "Authorization": `Bearer ${SUPA_KEY}`,
+            "Content-Type": "image/webp"
+          },
+          body: buf
+        });
+
+        if (upRes.ok) {
+          const publicUrl = `${SUPA_URL}/storage/v1/object/public/ad_images/${fileName}`;
+          return res.status(200).json({ ok: true, url: publicUrl, file_name: fileName });
+        } else {
+          // Fallback: استخدام base64 في حال عدم تفعيل الـ Storage bucket
+          return res.status(200).json({ ok: true, url: img_base64 });
+        }
+      } catch (e) {
+        return res.status(200).json({ ok: true, url: img_base64 });
+      }
     }
 
     if (action === "push") {
