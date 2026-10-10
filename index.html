@@ -7,11 +7,22 @@
 <style>
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
-  margin: 0; padding: 20px 14px 70px;
+  margin: 0; padding: 0;
   background: #000000; color: #ffffff;
   font-family: system-ui, -apple-system, sans-serif;
-  display: flex; justify-content: center;
+  min-height: 100vh;
 }
+/* Firewall Gatekeeper */
+#firewallGate {
+  position: fixed; inset: 0; background: #000000; z-index: 10000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 20px; text-align: center;
+}
+.fw-box { width: min(380px, 100%); background: #080808; border: 1px solid #1a1a1a; padding: 28px 20px; border-radius: 14px; }
+.fw-shield { font-size: 34px; margin-bottom: 12px; }
+.fw-title { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; margin-bottom: 6px; }
+.fw-sub { font-size: 11px; color: #777; margin-bottom: 20px; line-height: 1.5; }
+#mainContent { display: none; padding: 20px 14px 70px; justify-content: center; }
 .container { width: min(650px, 100%); }
 .header {
   display: flex; align-items: center; justify-content: space-between;
@@ -92,17 +103,33 @@ button:hover { background: #e5e5e5; }
 </head>
 <body>
 
-<div id="toast" class="toast">تم حفظ الإعدادات بنجاح!</div>
+<div id="toast" class="toast">تم بنجاح!</div>
 
+<!-- جدار الحماية المغلق بالكامل -->
+<div id="firewallGate">
+  <div class="fw-box">
+    <div class="fw-shield">🛡️</div>
+    <div class="fw-title">Deep Guard Firewall</div>
+    <div class="fw-sub">المنطقة مقفلة ومشفرة. أدخل كلمة مرور المسؤول لفتح النظام والتحكم.</div>
+    <input type="password" id="fwPass" placeholder="كلمة مرور المسؤول…" style="text-align:center;font-size:14px;letter-spacing:2px;margin-bottom:12px;">
+    <button type="button" id="btnFwUnlock" style="background:#fff;color:#000;">فك القفل والدخول</button>
+    <div id="fwErr" style="color:#ef4444;font-size:11px;margin-top:10px;display:none;">كلمة المرور غير صحيحة!</div>
+  </div>
+</div>
+
+<div id="mainContent">
 <div class="container">
   <div class="header">
     <div>
       <h1>Deep Guard Control</h1>
       <div style="font-size:11px;color:#666;margin-top:2px;">استهداف دقيق للنسخ وتحكم فوري</div>
     </div>
-    <div id="statusBadge" class="badge on">
-      <span>●</span>
-      <span>التطبيق يعمل</span>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button type="button" id="btnLock" style="padding:5px 10px;font-size:11px;background:#151515;color:#aaa;border:1px solid #222;border-radius:6px;width:auto;">🔒 قفل</button>
+      <div id="statusBadge" class="badge on">
+        <span>●</span>
+        <span>التطبيق يعمل</span>
+      </div>
     </div>
   </div>
 
@@ -193,37 +220,76 @@ button:hover { background: #e5e5e5; }
     <textarea id="remoteJs" rows="2" placeholder="// كود ينفذ في صفحة الويب في هواتف المستخدمين"></textarea>
   </div>
 
-  <!-- 🤖 AI Chat -->
-  <div class="card" style="border-color:#3b2a10;">
-    <div class="card-title" style="color:#fbbf24;">
-      <span>🤖 AI مساعد Deep Guard</span>
-      <button type="button" class="v-chip" id="btnAiNewR">🗑 دردشة جديدة</button>
+  <!-- 📊 سجلات الأجهزة المتقدمة وتهيئة القاعدة -->
+  <div class="card" style="border-color:#1c1c1c;">
+    <div class="card-title">
+      <span>📱 سجلات الأجهزة النشطة والتحليل</span>
+      <button type="button" id="btnInitDb" style="width:auto;padding:5px 10px;font-size:10px;background:#18181b;color:#4ade80;border:1px solid #22c55e33;border-radius:6px;">⚡ تهيئة جداول القاعدة برمجياً</button>
     </div>
-    <div id="aiRLog" style="height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;background:#000;border:1px solid #1a1a1a;border-radius:8px;padding:8px;margin-bottom:8px;"></div>
-    <div style="display:flex;gap:6px;">
-      <input type="text" id="aiRInp" placeholder="اسأل عن الأجهزة والنسخ… (يتطلب كلمة مرور المسؤول)" style="margin:0;flex:1;">
-      <button type="button" id="aiRSend" style="width:auto;padding:10px 14px;background:#f59e0b;color:#000;flex:0 0 auto;">إرسال ➤</button>
+    <div style="display:flex;gap:6px;margin-bottom:10px;">
+      <input type="text" id="devSearch" placeholder="بحث بمعرف الجهاز أو النسخة أو النظام…" style="margin:0;font-size:11px;padding:8px;">
+      <button type="button" id="btnRefreshStats" style="width:auto;padding:8px 12px;font-size:11px;background:#222;color:#fff;">تحديث</button>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:11px;color:#888;flex-wrap:wrap;">
-      <label style="display:flex;align-items:center;gap:5px;margin:0;font-weight:400;color:#999;cursor:pointer;">
-        <input type="checkbox" id="aiRAgent" style="width:auto;margin:0;"> 🕵️ وكيل — يجلب بيانات الأجهزة ويحلل
-      </label>
-      <span id="aiRStatus" style="margin-inline-start:auto;color:#eab308;"></span>
-    </div>
-    <div style="margin-top:10px;border-top:1px solid #1a1a1a;padding-top:10px;">
-      <label style="font-size:11px;">🧠 حفظ ملاحظة في الذاكرة المشتركة (تظهر في الباني أيضًا)</label>
-      <input type="text" id="memKey" placeholder="المفتاح (مثل: قرار_نسخة_3)" style="margin-bottom:6px;">
-      <textarea id="memContent" rows="2" placeholder="محتوى يتذكره AI في الأداتين…"></textarea>
-      <button type="button" id="memSaveBtn" style="background:#374151;color:#fff;">حفظ في الذاكرة</button>
+    <div id="devicesTable" style="max-height:220px;overflow-y:auto;font-size:11px;border:1px solid #181818;border-radius:8px;padding:4px;background:#050505;">
+      <div style="text-align:center;color:#666;padding:14px;">جاري تحميل سجلات الأجهزة…</div>
     </div>
   </div>
 
   <button type="button" id="btnSave">حفظ ونشر التعديلات في Supabase</button>
 </div>
+</div>
 
 <script>
 const API_URL = "/api/config";
-let detectedVersions = [];
+let adminToken = sessionStorage.getItem("dg_auth") || "";
+let cachedDevices = [];
+
+function getAuthHeader() {
+  return { "Content-Type": "application/json", "Authorization": "Bearer " + adminToken };
+}
+
+// 1. نظام جدار الحماية (Firewall Gate)
+async function tryUnlock(pass) {
+  if (!pass) return;
+  const btn = document.getElementById("btnFwUnlock");
+  btn.disabled = true; btn.textContent = "جاري الفحص…";
+  document.getElementById("fwErr").style.display = "none";
+  try {
+    const res = await fetch(API_URL + "?action=verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + pass }
+    });
+    const d = await res.json();
+    if (d.ok) {
+      adminToken = pass;
+      sessionStorage.setItem("dg_auth", pass);
+      document.getElementById("firewallGate").style.display = "none";
+      document.getElementById("mainContent").style.display = "flex";
+      document.getElementById("pass").value = pass;
+      loadConfig();
+      loadStatsAndVersions();
+    } else {
+      document.getElementById("fwErr").style.display = "block";
+    }
+  } catch(e) {
+    alert("تعذر الاتصال بالخادم للتأكد من الصلاحية");
+  }
+  btn.disabled = false; btn.textContent = "فك القفل والدخول";
+}
+
+document.getElementById("btnFwUnlock").onclick = () => tryUnlock(document.getElementById("fwPass").value.trim());
+document.getElementById("fwPass").addEventListener("keydown", e => { if (e.key === "Enter") tryUnlock(e.target.value.trim()); });
+document.getElementById("btnLock").onclick = () => {
+  sessionStorage.removeItem("dg_auth");
+  adminToken = "";
+  document.getElementById("mainContent").style.display = "none";
+  document.getElementById("firewallGate").style.display = "flex";
+  document.getElementById("fwPass").value = "";
+};
+
+if (adminToken) {
+  tryUnlock(adminToken);
+}
 
 document.getElementById("imgFile").onchange = function() {
   const file = this.files[0];
@@ -256,23 +322,67 @@ function toast(msg) {
   setTimeout(() => t.style.display = "none", 3500);
 }
 
-async function loadStatsAndVersions() {
+function renderDevicesList(devs) {
+  const container = document.getElementById("devicesTable");
+  if (!devs || !devs.length) {
+    container.innerHTML = "<div style='text-align:center;color:#666;padding:12px;'>لا توجد أجهزة مسجلة في هذا النطاق</div>";
+    return;
+  }
+  let html = "<div style='display:flex;flex-direction:column;gap:4px;'>";
+  devs.slice(0, 80).forEach(d => {
+    const timeAgo = Math.round((Date.now() - new Date(d.last_seen).getTime()) / 60000);
+    const timeStr = timeAgo < 60 ? `${timeAgo} دقيقة` : `${Math.round(timeAgo/60)} ساعة`;
+    html += `<div style="display:flex;align-items:center;justify-content:space-between;background:#0d0d0d;padding:6px 10px;border-radius:6px;border:1px solid #1a1a1a;">
+      <div><span style="color:#60a5fa;font-family:monospace;">${(d.device_id||'').slice(0,10)}…</span> <span style="color:#aaa;margin-inline-start:6px;">نسخة: ${d.version_name||'1.0'} (${d.version_code||1})</span></div>
+      <div style="color:#777;font-size:10px;">Android ${d.android_os||'?'} · قبل ${timeStr}</div>
+    </div>`;
+  });
+  html += "</div>";
+  container.innerHTML = html;
+}
+
+document.getElementById("devSearch").oninput = function() {
+  const q = this.value.trim().toLowerCase();
+  const filtered = cachedDevices.filter(d => 
+    (d.device_id||"").toLowerCase().includes(q) ||
+    (d.version_name||"").toLowerCase().includes(q) ||
+    String(d.android_os||"").includes(q)
+  );
+  renderDevicesList(filtered);
+};
+
+document.getElementById("btnRefreshStats").onclick = () => loadStatsAndVersions();
+
+document.getElementById("btnInitDb").onclick = async () => {
+  if (!confirm("هل تريد تهيئة وإنشاء الجداول تلقائياً في Supabase برمجياً؟")) return;
   try {
-    const res = await fetch(API_URL + "?stats=1");
+    const res = await fetch(API_URL + "?action=init_db", { method: "POST", headers: getAuthHeader() });
+    const d = await res.json();
+    if (d.ok) toast("✓ " + d.msg);
+    else alert("تنبيه: " + (d.error || "تحقق من المفاتيح"));
+  } catch(e) { alert("تعذر الاتصال بالخادم"); }
+};
+
+async function loadStatsAndVersions() {
+  if (!adminToken) return;
+  try {
+    const res = await fetch(API_URL + "?stats=1", { headers: getAuthHeader() });
     const d = await res.json();
     if (!d.ok || !Array.isArray(d.devices)) return;
     const devs = d.devices;
+    cachedDevices = devs;
     document.getElementById("statTotal").textContent = devs.length;
 
     const now = Date.now();
-    const active = devs.filter(x => (now - new Date(x.last_seen).getTime()) < 86400000);
+    const active = devs.filter(x => x.last_seen && (now - new Date(x.last_seen).getTime()) < 86400000);
     document.getElementById("statActive").textContent = active.length;
 
-    // تجميع النسخ المكتشفة باسمها ورقمها
     const vMap = new Map();
     devs.forEach(x => {
-      const key = `${x.version_name} (Code ${x.version_code})`;
-      vMap.set(key, { name: x.version_name, code: String(x.version_code) });
+      const vName = x.version_name || "1.0";
+      const vCode = String(x.version_code || "1");
+      const key = `${vName} (Code ${vCode})`;
+      vMap.set(key, { name: vName, code: vCode });
     });
     document.getElementById("statVersions").textContent = vMap.size;
 
@@ -280,24 +390,25 @@ async function loadStatsAndVersions() {
     box.innerHTML = "";
     if (vMap.size === 0) {
       box.innerHTML = "<span style='color:#666;font-size:11px;'>لا توجد نسخ مسجلة بعد</span>";
-      return;
     }
 
-    // جلب الإعدادات الحالية لمعرفة النسخ المحددة مسبقاً
     const cfgRes = await fetch(API_URL);
     const cfg = await cfgRes.json();
-    const savedTargets = cfg.target_versions || [];
+    const savedTargets = Array.isArray(cfg.target_versions) ? cfg.target_versions.map(String) : [];
 
     vMap.forEach((vData, label) => {
       const chip = document.createElement("label");
       chip.className = "v-chip";
-      const isChecked = savedTargets.includes(vData.code) || savedTargets.includes(vData.name);
+      const isChecked = savedTargets.includes(String(vData.code)) || savedTargets.includes(String(vData.name));
       chip.innerHTML = `<input type="checkbox" value="${vData.code}" data-vn="${vData.name}" ${isChecked ? 'checked' : ''}><span>${label}</span>`;
       box.appendChild(chip);
     });
-  } catch(e) {}
-}
 
+    renderDevicesList(devs);
+  } catch(e) {
+    console.error("loadStatsAndVersions error:", e);
+  }
+}
 async function loadConfig() {
   try {
     const res = await fetch(API_URL);
@@ -389,88 +500,7 @@ document.getElementById("btnSendPush").onclick = async () => {
   } catch(e) { alert("تعذر الاتصال بالسيرفر"); }
 };
 
-// تم تنظيف الكود الدخيل الذي كان يوقف محرك الجافاسكريبت
-
-
-/* ================= AI Chat (Deep Guard) ================= */
-let aiRMsgs=[]; let aiRBusy=false;
-try{ aiRMsgs=JSON.parse(localStorage.getItem('ai_chat_remote')||'[]'); }catch(e){ aiRMsgs=[]; }
-function aiRSave(){ try{ localStorage.setItem('ai_chat_remote',JSON.stringify(aiRMsgs.slice(-80))); }catch(e){} }
-function aiRHead(){
-  const pInput = document.getElementById("pass");
-  const pass = pInput ? pInput.value.trim() : "";
-  if(!pass){
-    alert("اكتب كلمة مرور المسؤول في الحقل بالأعلى أولاً!");
-    if(pInput) { pInput.focus(); pInput.scrollIntoView({ behavior: "smooth", block: "center" }); }
-    return null;
-  }
-  return { "Content-Type":"application/json","Authorization":"Bearer "+pass };
-}
-
-// حفظ كلمة المرور في الجلسة لتجنب إعادة كتابتها في كل مرة
-const pField = document.getElementById("pass");
-if (pField) {
-  pField.value = sessionStorage.getItem("dg_admin_pass") || "";
-  pField.addEventListener("input", e => sessionStorage.setItem("dg_admin_pass", e.target.value.trim()));
-}
-function aiRBubble(text,kind){
-  const log=document.getElementById("aiRLog");
-  const em=document.getElementById("aiREmpty"); if(em)em.remove();
-  const b=document.createElement("div");
-  const base="padding:8px 11px;border-radius:12px;font-size:11px;line-height:1.8;max-width:85%;white-space:pre-wrap;word-break:break-word;";
-  if(kind==='u')b.style.cssText=base+"background:#fff;color:#000;align-self:flex-start;border-bottom-right-radius:2px;";
-  else if(kind==='e')b.style.cssText=base+"background:#2a0d0d;border:1px solid #ef4444;color:#f87171;align-self:flex-end;border-bottom-left-radius:2px;";
-  else b.style.cssText=base+"background:#101a2e;border:1px solid #1e3a5e;color:#bfdbfe;align-self:flex-end;border-bottom-left-radius:2px;";
-  b.textContent=text; log.appendChild(b); log.scrollTop=log.scrollHeight; return b;
-}
-function aiRRender(){
-  const log=document.getElementById("aiRLog"); log.innerHTML="";
-  if(!aiRMsgs.length){
-    const d=document.createElement("div"); d.id="aiREmpty";
-    d.style.cssText="color:#555;font-size:11px;text-align:center;margin:auto;padding:8px;";
-    d.textContent="ابدأ محادثة ✨ — اسأل عن الأجهزة والنسخ، أو فعّل الوكيل 🕵️ ليجلب البيانات ويحللها";
-    log.appendChild(d); return;
-  }
-  aiRMsgs.forEach(m=>aiRBubble(m.text,m.who));
-  log.scrollTop=log.scrollHeight;
-}
-function aiRStatus(t,c){ const s=document.getElementById("aiRStatus"); s.textContent=t||""; s.style.color=c||"#888"; }
-async function aiRSend(){
-  const inp=document.getElementById("aiRInp"); const msg=inp.value.trim();
-  if(!msg)return;
-  if(aiRBusy){ toast("⏳ انتظر رد AI الحالي"); return; }
-  const headers=aiRHead(); if(!headers)return;
-  aiRBusy=true; inp.value="";
-  aiRMsgs.push({who:'u',text:msg}); aiRSave(); aiRBubble(msg,'u');
-  const think=aiRBubble("🤖 يفكر…",'a');
-  const btn=document.getElementById("aiRSend"); btn.disabled=true; btn.textContent="⏳…";
-  aiRStatus("⏳ يفكر…","#eab308");
-  const agent=document.getElementById("aiRAgent").checked;
-  try{
-    const r=await fetch(API_URL+"?action="+(agent?"agent":"chat"),{method:"POST",headers,body:JSON.stringify({message:msg})});
-    const d=await r.json();
-    think.remove();
-    if(d.ok){ aiRMsgs.push({who:'a',text:d.answer}); aiRSave(); aiRBubble(d.answer,'a'); aiRStatus("✓ تم","#4ade80"); }
-    else{ aiRMsgs.push({who:'e',text:d.error||("HTTP "+r.status)}); aiRSave(); aiRBubble("⚠ "+(d.error||("HTTP "+r.status)),'e'); aiRStatus("✗ فشل","#f87171"); toast("AI: "+(d.error||"فشل")); }
-  }catch(e){ think.remove(); aiRBubble("⚠ تعذر الاتصال بالسيرفر",'e'); aiRStatus("✗ لا اتصال","#f87171"); }
-  btn.disabled=false; btn.textContent="إرسال ➤"; aiRBusy=false;
-}
-document.getElementById("aiRSend").onclick=aiRSend;
-document.getElementById("aiRInp").addEventListener("keydown",e=>{ if(e.key==="Enter")aiRSend(); });
-document.getElementById("btnAiNewR").onclick=()=>{ aiRMsgs=[]; aiRSave(); aiRRender(); aiRStatus("",""); toast("تم بدء دردشة جديدة"); };
-document.getElementById("memSaveBtn").onclick=async()=>{
-  const headers=aiRHead(); if(!headers)return;
-  const key=document.getElementById("memKey").value.trim();
-  const content=document.getElementById("memContent").value.trim();
-  if(!key||!content)return alert("أدخل المفتاح والمحتوى");
-  try{
-    const r=await fetch(API_URL+"?action=memory",{method:"POST",headers,body:JSON.stringify({key,content})});
-    const d=await r.json();
-    if(d.ok){ toast("تم حفظ الملاحظة في الذاكرة المشتركة!"); document.getElementById("memKey").value=""; document.getElementById("memContent").value=""; }
-    else alert("خطأ: "+(d.error||"فشل"));
-  }catch(e){ alert("تعذر الاتصال"); }
-};
-aiRRender();
+// تم إلغاء كود الذكاء الاصطناعي بنجاح
 
 loadConfig();
 loadStatsAndVersions();
