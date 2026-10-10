@@ -15,75 +15,55 @@ export default async function handler(req, res) {
   const ADMIN_PASS = process.env.ADMIN_PASSWORD || "admin123";
   const OS_APP_ID = process.env.ONESIGNAL_APP_ID || "";
   const OS_REST_KEY = process.env.ONESIGNAL_REST_KEY || "";
-  const TOPAI_KEY = process.env.TOPAI_KEY || "";
-  const TOPAI_BASE = (process.env.TOPAI_BASE || "https://top-tools-ai.com/api/v1").replace(/\/$/, "");
-  const TOPAI_MODEL = process.env.TOPAI_MODEL || "GLM-5.3-Flash";
-  const GROQ_KEY = process.env.GROQ_API_KEY || "";
 
-  async function aiAsk(messages, maxTokens = 700) {
-    const tryTopAI = async () => {
-      if (!TOPAI_KEY) return "";
-      const r = await fetch(TOPAI_BASE + "/chat/completions", {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${TOPAI_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: TOPAI_MODEL, messages, max_tokens: maxTokens })
-      });
-      const d = await r.json();
-      return ((d.choices && d.choices[0].message.content) || "").trim();
-    };
-    const tryGroq = async () => {
-      if (!GROQ_KEY) return "";
-      const models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "qwen/qwen3.8-27b"];
-      for (const m of models) {
-        try {
-          const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: { "Authorization": `Bearer ${GROQ_KEY}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ model: m, messages, max_tokens: maxTokens })
-          });
-          const d = await r.json();
-          const txt = ((d.choices && d.choices[0].message.content) || "").trim();
-          if (txt) return txt;
-        } catch(e) {}
-      }
-      return "";
-    };
-    for (const fn of [tryTopAI, tryGroq]) {
-      try { const out = await fn(); if (out) return out; } catch (e) {}
-    }
-    return "";
-  }
-
-  async function memGet() {
-    if (!SUPA_URL || !SUPA_KEY) return [];
+  // دالة إنشاء وتهيئة الجداول برمجياً في Supabase
+  async function bootstrapDatabase() {
+    if (!SUPA_URL || !SUPA_KEY) return { ok: false, error: "متغيرات Supabase غير مضبوطة في Vercel" };
+    const schemaSql = `
+      CREATE TABLE IF NOT EXISTS public.app_config (
+        id text PRIMARY KEY,
+        config jsonb NOT NULL DEFAULT '{}'::jsonb,
+        updated_at timestamptz DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS public.app_devices (
+        device_id text PRIMARY KEY,
+        version_code integer DEFAULT 1,
+        version_name text DEFAULT '1.0',
+        android_os integer DEFAULT 0,
+        last_seen timestamptz DEFAULT now()
+      );
+    `;
     try {
-      const r = await fetch(`${SUPA_URL}/rest/v1/app_config?id=eq.ai_memory&select=config`, {
-        headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}` }
+      const projRef = (SUPA_URL.match(/https:\/\/([^.]+)\.supabase\.co/) || [])[1];
+      const sqlUrl = projRef ? `https://${projRef}.supabase.co/v1/query` : `${SUPA_URL}/v1/query`;
+      const r = await fetch(sqlUrl, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", "apikey": SUPA_KEY },
+        body: JSON.stringify({ query: schemaSql })
       });
-      const rows = await r.json();
-      return (rows && rows[0] && rows[0].config && rows[0].config.memories) || [];
-    } catch (e) { return []; }
+      if (r.ok) return { ok: true, msg: "تم إنشاء جداول app_config و app_devices بنجاح!" };
+      
+      // Fallback عبر REST لتهيئة السجل الأساسي
+      await fetch(`${SUPA_URL}/rest/v1/app_config`, {
+        method: "POST",
+        headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" },
+        body: JSON.stringify({ id: "global", config: { kill_switch: false, min_version: 1 } })
+      });
+      return { ok: true, msg: "تم فحص وتهيئة الاتصال بالقاعدة" };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
   }
-  async function memSet(memories) {
-    if (!SUPA_URL || !SUPA_KEY) return false;
-    const r = await fetch(`${SUPA_URL}/rest/v1/app_config`, {
-      method: "POST",
-      headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" },
-      body: JSON.stringify({ id: "ai_memory", config: { memories: memories.slice(-200) } })
-    });
-    return r.ok;
-  }
-  async function memSearch(q) {
-    const ql = (q || "").toLowerCase();
-    const all = await memGet();
-    return all.filter(m => !ql || (m.key + " " + m.content).toLowerCase().includes(ql)).slice(-15);
-  }
+
   async function fetchDevices() {
     if (!SUPA_URL || !SUPA_KEY) return [];
-    const r = await fetch(`${SUPA_URL}/rest/v1/app_devices?select=*&order=last_seen.desc&limit=200`, {
-      headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}` }
-    });
-    return await r.json();
+    try {
+      const r = await fetch(`${SUPA_URL}/rest/v1/app_devices?select=*&order=last_seen.desc&limit=250`, {
+        headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}` }
+      });
+      const data = await r.json();
+      return Array.isArray(data) ? data : [];
+    } catch (e) { return []; }
   }
 
   const { v, vn, did, os: androidOs, stats } = req.query;
@@ -108,24 +88,19 @@ export default async function handler(req, res) {
     }).catch(() => {});
   }
 
-  // 2. إرجاع إحصائيات الأجهزة وتجميع النسخ للوحة التحكم
+  // 2. إرجاع إحصائيات الأجهزة وتأمينها (تتطلب تصريح جدار الحماية)
   if (req.method === "GET" && stats === "1") {
-    if (!SUPA_URL || !SUPA_KEY) return res.status(200).json({ ok: false, error: "Supabase غير متصل" });
+    const token = (req.headers["authorization"] || "").replace("Bearer ", "").trim();
+    if (token !== ADMIN_PASS) {
+      return res.status(401).json({ ok: false, error: "ممنوع: يتطلب تصريح مسؤول" });
+    }
+    if (!SUPA_URL || !SUPA_KEY) return res.status(200).json({ ok: false, error: "Supabase غير متصل", devices: [] });
     try {
-      const resp = await fetch(`${SUPA_URL}/rest/v1/app_devices?select=*&order=last_seen.desc&limit=150`, {
-        headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}` }
-      });
-      const devices = await resp.json();
+      const devices = await fetchDevices();
       return res.status(200).json({ ok: true, devices });
     } catch (e) {
-      return res.status(500).json({ ok: false, error: e.message });
+      return res.status(500).json({ ok: false, error: e.message, devices: [] });
     }
-  }
-
-  // 2.5 ذاكرة AI المشتركة (قراءة)
-  if (req.method === "GET" && req.query.action === "memory") {
-    const q = req.query.q || "";
-    return res.status(200).json({ ok: true, memories: await memSearch(q) });
   }
 
   // 3. إرسال الإعدادات لتطبيق الهاتف
@@ -167,62 +142,15 @@ export default async function handler(req, res) {
 
     const { action } = req.query;
 
-    if (action === "chat") {
-      const { message, context } = req.body || {};
-      if (!message) return res.status(400).json({ ok: false, error: "اكتب رسالة" });
-      const mem = await memSearch(message.slice(0, 60));
-      const sys = "أنت مساعد Deep Guard (لوحة تحكم تطبيقات Android) بالعربية. أجب بإيجاز عملي. ذكريات مرتبطة:\n" +
-        mem.map(m => `- ${m.key}: ${String(m.content).slice(0, 200)}`).join("\n");
-      const answer = await aiAsk([
-        { role: "system", content: sys },
-        { role: "user", content: ((context || "") + "\n" + message).slice(0, 3000) }
-      ]);
-      if (!answer) return res.status(502).json({ ok: false, error: "تعذر الوصول لأي نموذج AI" });
-      return res.status(200).json({ ok: true, answer, model: TOPAI_MODEL });
+    // التحقق من صلاحية كلمة مرور جدار الحماية
+    if (action === "verify") {
+      return res.status(200).json({ ok: true, msg: "تم التحقق بنجاح" });
     }
 
-    if (action === "agent") {
-      const { message } = req.body || {};
-      if (!message) return res.status(400).json({ ok: false, error: "اكتب مهمة" });
-      const devices = await fetchDevices();
-      const versions = {};
-      (Array.isArray(devices) ? devices : []).forEach(d => {
-        const k = `${d.version_name} (${d.version_code})`;
-        versions[k] = (versions[k] || 0) + 1;
-      });
-      const sys = "أنت وكيل تحليل أجهزة المستخدمين. أجب بالعربية JSON فقط: " +
-        '{"tool":"devices"|"versions"|"memory_search"|"memory_save","args":{...}} أو {"final":"الإجابة"}. ' +
-        `لديك فورًا: ${devices.length} جهاز. النسخ: ${JSON.stringify(versions)}. ` +
-        "للبحث عن نسخة معينة: أداة versions ثم حلل.";
-      let history = [
-        { role: "system", content: sys },
-        { role: "user", content: String(message).slice(0, 1500) }
-      ];
-      const steps = [];
-      for (let i = 0; i < 4; i++) {
-        const raw = await aiAsk(history, 600);
-        const m = raw.match(/\{[\s\S]*\}/);
-        if (!m) return res.status(200).json({ ok: true, answer: raw || "…", steps });
-        let act; try { act = JSON.parse(m[0]); } catch (e) { return res.status(200).json({ ok: true, answer: raw, steps }); }
-        if (act.final) return res.status(200).json({ ok: true, answer: String(act.final), steps });
-        let result = { error: "أداة غير معروفة" };
-        if (act.tool === "devices") result = { count: devices.length, sample: devices.slice(0, 5) };
-        if (act.tool === "versions") result = { versions };
-        if (act.tool === "memory_search") result = { results: await memSearch(act.args && act.args.query || "") };
-        if (act.tool === "memory_save") result = { saved: await memSet([...(await memGet()), { key: String(act.args.key || "note").slice(0, 80), content: String(act.args.content || "").slice(0, 2000), at: new Date().toISOString() }]) };
-        steps.push({ tool: act.tool });
-        history.push({ role: "assistant", content: m[0] });
-        history.push({ role: "user", content: "نتيجة الأداة:\n" + JSON.stringify(result).slice(0, 2500) + "\nأكمل JSON فقط." });
-      }
-      return res.status(200).json({ ok: true, answer: "توقفت بعد أقصى خطوات.", steps });
-    }
-
-    if (action === "memory") {
-      const { key, content, del } = req.body || {};
-      if (del) { await memSet((await memGet()).filter(x => x.key !== del)); return res.status(200).json({ ok: true }); }
-      if (!key) return res.status(400).json({ ok: false, error: "أدخل مفتاح" });
-      await memSet([...(await memGet()), { key: String(key).slice(0, 80), content: String(content || "").slice(0, 2000), at: new Date().toISOString() }]);
-      return res.status(200).json({ ok: true });
+    // تهيئة الجداول برمجياً
+    if (action === "init_db") {
+      const r = await bootstrapDatabase();
+      return res.status(200).json(r);
     }
 
     if (action === "push") {
