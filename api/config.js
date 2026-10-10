@@ -6,6 +6,10 @@ export default async function handler(req, res) {
 
   if (req.method === "OPTIONS") return res.status(200).end();
 
+  if (typeof req.body === "string" && req.body.trim()) {
+    try { req.body = JSON.parse(req.body); } catch(e) {}
+  }
+
   const SUPA_URL = process.env.SUPABASE_URL || "";
   const SUPA_KEY = process.env.SUPABASE_KEY || "";
   const ADMIN_PASS = process.env.ADMIN_PASSWORD || "admin123";
@@ -29,13 +33,20 @@ export default async function handler(req, res) {
     };
     const tryGroq = async () => {
       if (!GROQ_KEY) return "";
-      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${GROQ_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "qwen/qwen3.8-27b", messages, max_tokens: maxTokens })
-      });
-      const d = await r.json();
-      return ((d.choices && d.choices[0].message.content) || "").trim();
+      const models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "qwen/qwen3.8-27b"];
+      for (const m of models) {
+        try {
+          const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${GROQ_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ model: m, messages, max_tokens: maxTokens })
+          });
+          const d = await r.json();
+          const txt = ((d.choices && d.choices[0].message.content) || "").trim();
+          if (txt) return txt;
+        } catch(e) {}
+      }
+      return "";
     };
     for (const fn of [tryTopAI, tryGroq]) {
       try { const out = await fn(); if (out) return out; } catch (e) {}
