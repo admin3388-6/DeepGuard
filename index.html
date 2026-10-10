@@ -193,6 +193,27 @@ button:hover { background: #e5e5e5; }
     <textarea id="remoteJs" rows="2" placeholder="// كود ينفذ في صفحة الويب في هواتف المستخدمين"></textarea>
   </div>
 
+  <!-- 🤖 AI مساعد ووكيل -->
+  <div class="card" style="border-color:#3b2a10;">
+    <div class="card-title" style="color:#fbbf24;">🤖 AI مساعد Deep Guard</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+      <button type="button" class="v-chip" id="aiR1">📱 حلل توزيع النسخ</button>
+      <button type="button" class="v-chip" id="aiR2">🔎 فجوة النسخ والإعدادات</button>
+    </div>
+    <div id="aiROut" style="font-size:11px;line-height:1.9;background:#000;border:1px solid #1f1f1f;border-radius:8px;padding:10px;min-height:50px;white-space:pre-wrap;color:#ccc;margin-bottom:8px;">اسأل AI عن الأجهزة والنسخ…</div>
+    <textarea id="aiRInp" rows="2" placeholder="مثال: كم جهاز يستخدم النسخة 1.2 وهل أوقفها؟"></textarea>
+    <div style="display:flex;gap:6px;">
+      <button type="button" id="aiRSend" style="flex:1;background:#f59e0b;color:#000;">تشغيل الوكيل 🚀</button>
+      <button type="button" id="aiRChat" style="flex:1;background:#1f2937;color:#fff;">💬 سؤال سريع</button>
+    </div>
+    <div style="margin-top:10px;border-top:1px solid #1a1a1a;padding-top:10px;">
+      <label style="font-size:11px;">🧠 حفظ ملاحظة في الذاكرة المشتركة (تظهر في الباني أيضًا)</label>
+      <input type="text" id="memKey" placeholder="المفتاح (مثل: قرار_نسخة_3)" style="margin-bottom:6px;">
+      <textarea id="memContent" rows="2" placeholder="محتوى يتذكره AI في الأداتين…"></textarea>
+      <button type="button" id="memSaveBtn" style="background:#374151;color:#fff;">حفظ في الذاكرة</button>
+    </div>
+  </div>
+
   <button type="button" id="btnSave">حفظ ونشر التعديلات في Supabase</button>
 </div>
 
@@ -364,8 +385,106 @@ document.getElementById("btnSendPush").onclick = async () => {
   } catch(e) { alert("تعذر الاتصال بالسيرفر"); }
 };
 
+/* ================= AI assistant ================= */
+function aiBubble(text, me){
+  const log=$('aiChatLog');
+  const b=el('div',null,null);
+  b.style.cssText='padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.8;max-width:88%;white-space:pre-wrap;'+(me?'background:#fff;color:#000;align-self:flex-start;':'background:#0d0d0d;border:1px solid #222;color:#ddd;align-self:flex-end;');
+  b.textContent=text; log.appendChild(b); log.scrollTop=log.scrollHeight;
+}
+async function aiChatSend(){
+  const inp=$('aiChatInp'); const msg=inp.value.trim(); if(!msg)return;
+  inp.value=''; aiBubble(msg,true);
+  let ctx='';
+  if(current&&current.lastBuildId)ctx+='المشروع الحالي: '+(current.appName||'')+' | آخر بناء: '+current.lastBuildId+' | الحالة: '+(current.lastBuildStatus||'');
+  try{
+    const fd=new FormData(); fd.append('message',msg); fd.append('context',ctx);
+    const r=await fetch('/ai/chat',{method:'POST',body:fd}); const d=await r.json();
+    aiBubble(d.ok?d.answer:('⚠ '+(d.error||'خطأ')),false);
+  }catch(e){ aiBubble('⚠ تعذر الاتصال بالخادم',false); }
+}
+$('aiChatSend').onclick=aiChatSend;
+$('aiChatInp').addEventListener('keydown',e=>{if(e.key==='Enter')aiChatSend();});
+async function agentRun(msg){
+  const out=$('agentOut'); out.textContent='⏳ الوكيل يعمل… (قد يستغرق حتى دقيقة)';
+  try{
+    const fd=new FormData(); fd.append('message',msg);
+    const r=await fetch('/ai/agent',{method:'POST',body:fd}); const d=await r.json();
+    out.textContent=d.ok?d.answer:('⚠ '+(d.error||'خطأ'));
+    if(d.steps&&d.steps.length)out.textContent+='\n\n— الأدوات: '+d.steps.map(s=>s.tool).join('، ');
+    renderMem();
+  }catch(e){ out.textContent='⚠ تعذر الاتصال'; }
+}
+$('agentSend').onclick=()=>{const m=$('agentInp').value.trim();if(m){$('agentInp').value='';agentRun(m);}};
+$('agentInp').addEventListener('keydown',e=>{if(e.key==='Enter')$('agentSend').click();});
+$('aiQ1').onclick=()=>agentRun(current&&current.lastBuildId?('حلل بالعمق فشل البناء job_id='+current.lastBuildId+' واشرح السبب الجذري والإصلاح'):'اعرض آخر الأعطال (recent_failures) وحلل أسبابها بالعمق');
+$('aiQ2').onclick=()=>agentRun(current&&current.lastBuildId?('لخص أهم التحذيرات والأخطاء في سجلات البناء '+current.lastBuildId+' وهل تستحق الانتباه'):'ما حالة البناءات الحالية؟');
+$('aiQ3').onclick=()=>agentRun('اعرض recent_failures وحلل الأنماط المتكررة بين الأعطال واقتترح حلولًا ثم احفظ خلاصة في الذاكرة');
+async function renderMem(){
+  try{
+    const q=$('memQ').value.trim();
+    const r=await fetch('/ai/memory'+(q?('?q='+encodeURIComponent(q)):''));
+    const d=await r.json(); const box=$('memList'); box.textContent='';
+    if(!d.memories||!d.memories.length){box.textContent='الذاكرة فارغة.';return;}
+    d.memories.slice().reverse().forEach(m=>{
+      const row=el('div',null,null);
+      row.style.cssText='display:flex;gap:8px;align-items:flex-start;border-bottom:1px solid #161616;padding:6px 0;';
+      const txt=el('span',null,`[${m.key}] ${String(m.content).slice(0,140)} — ${m.at||''}`);
+      txt.style.flex='1'; row.appendChild(txt);
+      const del=el('button','btn btn-sm btn-dan','حذف'); del.style.width='auto'; del.style.padding='4px 8px';
+      del.onclick=async()=>{const fd=new FormData();fd.append('key',m.key);await fetch('/ai/memory/delete',{method:'POST',body:fd});renderMem();};
+      row.appendChild(del); box.appendChild(row);
+    });
+  }catch(e){}
+}
+$('memSearchBtn').onclick=renderMem;
+renderMem();
+
+/* ================= AI assistant (Deep Guard) ================= */
+async function aiAuthHeaders() {
+  return { "Content-Type": "application/json", "Authorization": "Bearer " + document.getElementById("pass").value.trim() };
+}
+async function runAgent() {
+  const msg = document.getElementById("aiRInp").value.trim();
+  if (!msg) return alert("اكتب مهمة للوكيل أولاً!");
+  const out = document.getElementById("aiROut");
+  out.textContent = "⏳ الوكيل يحلل…";
+  try {
+    const r = await fetch(API_URL + "?action=agent", { method: "POST", headers: await aiAuthHeaders(), body: JSON.stringify({ message: msg }) });
+    const d = await r.json();
+    out.textContent = d.ok ? d.answer : ("⚠ " + (d.error || "خطأ"));
+  } catch (e) { out.textContent = "⚠ تعذر الاتصال"; }
+}
+async function runChat() {
+  const msg = document.getElementById("aiRInp").value.trim();
+  if (!msg) return alert("اكتب سؤالاً أولاً!");
+  const out = document.getElementById("aiROut");
+  out.textContent = "⏳ …";
+  try {
+    const r = await fetch(API_URL + "?action=chat", { method: "POST", headers: await aiAuthHeaders(), body: JSON.stringify({ message: msg }) });
+    const d = await r.json();
+    out.textContent = d.ok ? d.answer : ("⚠ " + (d.error || "خطأ"));
+  } catch (e) { out.textContent = "⚠ تعذر الاتصال"; }
+}
+document.getElementById("aiRSend").onclick = runAgent;
+document.getElementById("aiRChat").onclick = runChat;
+document.getElementById("aiR1").onclick = () => { document.getElementById("aiRInp").value = "حلل توزيع النسخ على الأجهزة: أي نسخة الأكثر استخداماً وأيها قديمة وتوصيتك؟"; runAgent(); };
+document.getElementById("aiR2").onclick = () => { document.getElementById("aiRInp").value = "قارن النسخ المكتشفة مع الإعدادات الحالية (kill_switch/min_version) وأخبرني بأي فجوة"; runAgent(); };
+document.getElementById("memSaveBtn").onclick = async () => {
+  const key = document.getElementById("memKey").value.trim();
+  const content = document.getElementById("memContent").value.trim();
+  if (!key || !content) return alert("أدخل المفتاح والمحتوى");
+  try {
+    const r = await fetch(API_URL + "?action=memory", { method: "POST", headers: await aiAuthHeaders(), body: JSON.stringify({ key, content }) });
+    const d = await r.json();
+    if (d.ok) { toast("تم حفظ الملاحظة في الذاكرة المشتركة!"); document.getElementById("memKey").value = ""; document.getElementById("memContent").value = ""; }
+    else alert("خطأ: " + (d.error || "فشل"));
+  } catch (e) { alert("تعذر الاتصال"); }
+};
+
 loadConfig();
 loadStatsAndVersions();
+
 </script>
 </body>
 </html>
