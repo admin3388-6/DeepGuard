@@ -3,601 +3,1163 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deep Guard — لوحة التحكم المتطورة</title>
+<title>Web → APK Builder</title>
 <style>
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-body {
-  margin: 0; padding: 0;
-  background: #000000; color: #ffffff;
-  font-family: system-ui, -apple-system, sans-serif;
-  min-height: 100vh;
-}
-/* Firewall Gatekeeper */
-#firewallGate {
-  position: fixed; inset: 0; background: #000000; z-index: 10000;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 20px; text-align: center;
-}
-.fw-box { width: min(380px, 100%); background: #080808; border: 1px solid #1a1a1a; padding: 28px 20px; border-radius: 14px; }
-.fw-shield { font-size: 34px; margin-bottom: 12px; }
-.fw-title { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; margin-bottom: 6px; }
-.fw-sub { font-size: 11px; color: #777; margin-bottom: 20px; line-height: 1.5; }
-#mainContent { display: none; padding: 20px 14px 70px; justify-content: center; }
-.container { width: min(650px, 100%); }
-.header {
-  display: flex; align-items: center; justify-content: space-between;
-  border-bottom: 1px solid #1a1a1a; padding-bottom: 16px; margin-bottom: 20px;
-}
-h1 { font-size: 19px; margin: 0; font-weight: 800; letter-spacing: -0.5px; }
-.badge {
-  font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
-  border: 1px solid #222; background: #0a0a0a; display: inline-flex; align-items: center; gap: 6px;
-}
-.badge.on { border-color: #14532d; color: #4ade80; }
-.badge.kill { border-color: #7f1d1d; color: #f87171; }
-.stats-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px;
-}
-.stat-card {
-  background: #0a0a0a; border: 1px solid #1f1f1f; border-radius: 12px; padding: 14px 10px; text-align: center;
-}
-.stat-num { font-size: 24px; font-weight: 900; color: #ffffff; }
-.stat-lbl { font-size: 11px; color: #888888; margin-top: 4px; }
-.card {
-  background: #0a0a0a; border: 1px solid #222222; border-radius: 12px; padding: 16px; margin-bottom: 14px;
-}
-.card-title {
-  font-size: 13px; font-weight: 800; margin: 0 0 12px; color: #eee;
-  display: flex; align-items: center; justify-content: space-between;
-}
-label { display: block; font-size: 12px; font-weight: 700; color: #aaa; margin-bottom: 6px; }
-input, select, textarea {
-  width: 100%; padding: 11px; margin-bottom: 12px;
-  background: #000; border: 1px solid #2a2a2a; border-radius: 8px;
-  color: #fff; font-size: 13px; outline: none; font-family: inherit;
-}
-input:focus, select:focus, textarea:focus { border-color: #fff; }
-.version-checks {
-  display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0 12px;
-}
-.v-chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: #111; border: 1px solid #282828; padding: 6px 12px;
-  border-radius: 20px; font-size: 12px; cursor: pointer; user-select: none;
-}
-.v-chip input { width: auto; margin: 0; cursor: pointer; }
-.tgl-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 0; border-bottom: 1px solid #1a1a1a; margin-bottom: 12px;
-}
-.switch { position: relative; width: 38px; height: 22px; }
-.switch input { display: none; }
-.slider {
-  position: absolute; cursor: pointer; inset: 0;
-  background: #222; border-radius: 20px; transition: .2s;
-}
-.slider:before {
-  content: ""; position: absolute; height: 16px; width: 16px;
-  left: 3px; bottom: 3px; background: #666; border-radius: 50%; transition: .2s;
-}
-input:checked + .slider { background: #ef4444; }
-input:checked + .slider:before { transform: translateX(16px); background: #fff; }
-button {
-  width: 100%; padding: 14px; border-radius: 8px; border: 0;
-  background: #ffffff; color: #000000; font-size: 14px; font-weight: 800;
-  cursor: pointer; transition: 0.2s;
-}
-button:hover { background: #e5e5e5; }
-.btn-push { background: #2563eb; color: #fff; margin-top: 6px; }
-.btn-push:hover { background: #1d4ed8; }
-.img-preview {
-  max-width: 100%; height: 90px; object-fit: contain; background: #000;
-  border: 1px dashed #333; border-radius: 8px; margin-bottom: 12px; display: none;
-}
-.toast {
-  position: fixed; top: 16px; left: 16px; right: 16px;
-  background: #16a34a; color: #fff; padding: 12px; border-radius: 8px;
-  text-align: center; font-weight: 700; font-size: 13px; display: none; z-index: 999;
-}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{-webkit-tap-highlight-color:transparent;outline:none;font-family:inherit}
+body{margin:0;min-height:100vh;background:#000;color:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+[hidden]{display:none!important}
+.container{width:min(680px,94%);margin:20px auto 60px}
+/* ---------- header ---------- */
+.topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 0;border-bottom:1px solid #1c1c1c;margin-bottom:16px}
+.topbar h1{margin:0;font-size:20px;font-weight:800;letter-spacing:-.5px}
+.hdot{width:9px;height:9px;border-radius:50%;background:#555;display:inline-block}
+.hdot.on{background:#22c55e}.hdot.off{background:#ef4444}.hdot.slow{background:#eab308}
+.tabs{display:flex;gap:6px;margin-inline-start:auto}
+.tab{padding:8px 14px;font-size:12px;font-weight:700;background:#111;color:#999;border:1px solid #222;border-radius:8px;cursor:pointer}
+.tab.act{background:#fff;color:#000;border-color:#fff}
+.mode-sw{display:flex;align-items:center;gap:6px;font-size:11px;color:#888}
+.mode-sw input{accent-color:#fff;width:auto}
+/* ---------- projects ---------- */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.toolbar input,.toolbar select{flex:1;min-width:120px;padding:10px;border-radius:8px;border:1px solid #262626;background:#0a0a0a;color:#fff;font-size:13px;margin:0}
+.btn{border:1px solid #333;border-radius:8px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;background:#111;color:#fff;transition:.15s;white-space:nowrap}
+.btn:hover{border-color:#666}
+.btn-pri{background:#fff;color:#000;border-color:#fff}
+.btn-pri:disabled{opacity:.4;cursor:not-allowed}
+.btn-dan{color:#ef4444;border-color:#3a1111;background:#0a0505}
+.btn-sm{padding:7px 10px;font-size:11px;font-weight:600}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.pcard{background:#0a0a0a;border:1px solid #1f1f1f;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.pcard:hover{border-color:#333}
+.pcard-top{display:flex;gap:10px;align-items:center}
+.pico{width:44px;height:44px;border-radius:10px;background:#151515;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
+.pico img{width:100%;height:100%;object-fit:cover}
+.pico svg{color:#555}
+.pnames{min-width:0;flex:1}
+.pname{font-size:14px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pint{font-size:11px;color:#777;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.purl{font-size:11px;color:#6366f1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr;text-align:right}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;padding:3px 9px;border-radius:20px;border:1px solid}
+.chip svg{flex-shrink:0}
+.c-draft{color:#9ca3af;border-color:#333;background:#0d0d0d}
+.c-queued{color:#eab308;border-color:#453a10;background:#141204}
+.c-building{color:#818cf8;border-color:#2d2a5e;background:#0d0c22}
+.c-completed{color:#4ade80;border-color:#143a22;background:#04140a}
+.c-failed{color:#f87171;border-color:#471414;background:#180505}
+.c-cancelled{color:#d4d4d4;border-color:#333;background:#0d0d0d}
+.c-expired{color:#fb923c;border-color:#4a2410;background:#170b04}
+.pmeta{font-size:10px;color:#666;display:flex;flex-direction:column;gap:2px}
+.prow{display:flex;gap:6px;flex-wrap:wrap}
+.prow .btn{flex:1}
+.emptystate{text-align:center;color:#666;padding:50px 10px;font-size:13px;border:1px dashed #2a2a2a;border-radius:14px}
+/* ---------- editor ---------- */
+.edhead{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.edhead h2{margin:0;font-size:17px;font-weight:800;flex:1;min-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.savestat{font-size:10px;color:#777;padding:4px 10px;border:1px solid #222;border-radius:20px;white-space:nowrap}
+.savestat.dirty{color:#eab308;border-color:#453a10}
+.card{background:#0a0a0a;border:1px solid #222;border-radius:14px;padding:18px;margin-bottom:12px}
+label{display:block;margin-bottom:8px;font-weight:700;font-size:13px}
+input[type=text],input[type=url],input[type=password],input[type=number],select,textarea{width:100%;padding:12px;border-radius:8px;border:1px solid #262626;background:#000;color:#fff;font-size:14px;margin-bottom:14px}
+input:focus,select:focus,textarea:focus{border-color:#fff}
+.acc-head{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:700;cursor:pointer;user-select:none}
+.acc-body{margin-top:12px}
+.tgl-item{display:flex;align-items:center;justify-content:space-between;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:8px;padding:9px 12px;cursor:pointer;transition:.15s;margin-bottom:8px}
+.tgl-item:hover{border-color:#333}
+.tgl-left{display:flex;align-items:center;gap:10px;font-size:12px;color:#ccc}
+.tgl-sw{position:relative;width:32px;height:18px;background:#222;border-radius:20px;transition:.2s;flex-shrink:0}
+.tgl-sw::after{content:'';position:absolute;top:2px;right:2px;width:14px;height:14px;background:#666;border-radius:50%;transition:.2s}
+input[type=checkbox]:checked+.tgl-sw{background:#fff}
+input[type=checkbox]:checked+.tgl-sw::after{transform:translateX(-14px);background:#000}
+.hide-chk{display:none}
+.ks-opts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.ks-opt-card{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:8px;background:#0d0d0d;border:1px solid #222;color:#888;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;user-select:none}
+.ks-opt-card.active{background:#fff;color:#000;border-color:#fff}
+.sec-score{font-size:12px;font-weight:700;color:#4ade80;margin-bottom:6px;display:flex;justify-content:space-between}
+.sec-bar{height:4px;background:#222;border-radius:4px;overflow:hidden}
+.sec-fill{height:100%;width:60%;background:#4ade80;transition:.3s}
+.sec-grid{display:grid;grid-template-columns:1fr;gap:0;margin-top:10px}
+.sec-note{font-size:10px;color:#666;margin-top:6px}
+.mockup-wrap{display:flex;justify-content:center;margin:12px 0}
+.phone-mockup{width:180px;height:320px;background:#000;border:3px solid #262626;border-radius:22px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 10px 30px #000}
+.m-bar{height:14px;display:flex;justify-content:space-between;padding:2px 8px;font-size:8px;color:#666;background:#050505}
+.m-pb{width:100%;height:3px;background:#fff;display:none}
+.m-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0d0d0d}
+.m-app-ico{width:46px;height:46px;border-radius:10px;background:#1a1a1a;border:1px solid #333;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.m-app-ico img{width:100%;height:100%;object-fit:cover}
+.app-name-preview{margin-top:6px;font-size:11px;color:#ccc;font-weight:600;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.off-editor{height:130px;background:#000;border:1px solid #222;border-radius:8px;color:#fff;font-family:monospace;font-size:11px;padding:8px;resize:vertical}
+.line-count{font-size:10px;color:#888;text-align:left;margin-top:4px}
+.diag-res{background:#000;border:1px solid #222;border-radius:6px;padding:10px;font-size:11px;margin:8px 0;display:none;line-height:1.9}
+.status{display:none;margin-top:16px;padding:15px;border-radius:10px;background:#10131a;border:1px solid #292f3a}
+.status.show{display:block}
+.status-title{font-weight:800;margin-bottom:6px;font-size:14px}
+.progress{height:6px;background:#292f3a;border-radius:10px;overflow:hidden;margin-top:12px}
+.progress-bar{height:100%;background:#6366f1;transition:width .5s}
+.stage-item{display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:7px;color:#bbb}
+.s-spin{display:inline-block;width:10px;height:10px;border:2px solid #555;border-top-color:#fff;border-radius:50%;animation:rot .8s infinite linear;flex-shrink:0}
+@keyframes rot{to{transform:rotate(360deg)}}
+.term{background:#000;border:1px solid #1f1f1f;border-radius:8px;padding:10px;height:220px;overflow-y:auto;font-family:monospace;font-size:11px;text-align:left;direction:ltr;margin-top:12px;white-space:pre-wrap;word-break:break-all}
+.t-err{color:#ff5555}.t-war{color:#eab308}.t-inf{color:#a3a3a3}.t-ai{color:#fff;font-weight:700}.t-suc{color:#22c55e}
+.download{display:none;margin-top:16px}
+.download a{display:block;text-align:center;text-decoration:none;color:#fff;background:#16a34a;padding:15px;border-radius:11px;font-weight:800}
+.q-card{display:none;background:#131622;border:1px dashed #6366f1;border-radius:10px;padding:12px;margin-top:14px;text-align:center;font-size:12px}
+.q-card.show{display:block}
+.errcard{display:none;margin-top:16px;padding:15px;border-radius:10px;background:#180808;border:1px solid #4a1515}
+.errcard.show{display:block}
+.errcard h3{margin:0 0 8px;font-size:14px;color:#f87171}
+.errrow{font-size:12px;color:#ccc;margin-bottom:6px}
+.errrow b{color:#fff}
+.badge-mini{font-size:9px;font-weight:800;padding:2px 8px;border-radius:12px;background:#291515;color:#f87171;margin-inline-start:6px}
+.view-nav{display:flex;gap:6px;margin-top:16px;border-bottom:1px solid #222;padding-bottom:6px}
+.v-btn{padding:6px 12px;font-size:11px;background:#111;color:#888;border:1px solid #222;border-radius:6px;cursor:pointer}
+.v-btn.act{background:#fff;color:#000;font-weight:700}
+#toast-box{position:fixed;top:16px;right:16px;left:16px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;background:#0d0d0d;border:1px solid #2a2a2a;color:#fff;font-size:13px;font-weight:600;box-shadow:0 6px 20px #000;pointer-events:auto}
+.toast-err{border-color:#ef4444}.toast-suc{border-color:#22c55e}.toast-inf{border-color:#fff}
+.offline-bar{display:none;background:#2a1505;color:#fbbf24;font-size:12px;font-weight:700;text-align:center;padding:8px;border-radius:8px;margin-bottom:12px;border:1px solid #4a2c07}
+.offline-bar.show{display:block}
+.queue-item{display:flex;align-items:center;gap:10px;background:#0a0a0a;border:1px solid #1f1f1f;border-radius:10px;padding:12px;margin-bottom:8px;flex-wrap:wrap}
+.queue-item .qi-name{font-size:13px;font-weight:700;flex:1;min-width:140px}
+.queue-item .qi-meta{font-size:10px;color:#777}
+.undo-row{display:flex;gap:6px}
+.footer{text-align:center;color:#555;margin-top:30px;font-size:11px}
+body.simple .adv{display:none}
+@media(max-width:520px){.tabs{margin-inline-start:0;width:100%}.ks-opts{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
-
-<div id="toast" class="toast">تم بنجاح!</div>
-
-<!-- جدار الحماية المغلق بالكامل -->
-<div id="firewallGate">
-  <div class="fw-box">
-    <div class="fw-shield">🛡️</div>
-    <div class="fw-title">Deep Guard Firewall</div>
-    <div class="fw-sub">المنطقة مقفلة ومشفرة. أدخل كلمة مرور المسؤول لفتح النظام والتحكم.</div>
-    <input type="password" id="fwPass" placeholder="كلمة مرور المسؤول…" style="text-align:center;font-size:14px;letter-spacing:2px;margin-bottom:12px;">
-    <button type="button" id="btnFwUnlock" style="background:#fff;color:#000;">فك القفل والدخول</button>
-    <div id="fwErr" style="color:#ef4444;font-size:11px;margin-top:10px;display:none;">كلمة المرور غير صحيحة!</div>
-  </div>
-</div>
-
-<div id="mainContent">
+<div id="toast-box"></div>
 <div class="container">
-  <div class="header">
-    <div>
-      <h1>Deep Guard Control</h1>
-      <div style="font-size:11px;color:#666;margin-top:2px;">استهداف دقيق للنسخ وتحكم فوري</div>
+
+  <div class="topbar">
+    <h1>Web → APK</h1>
+    <span class="hdot" id="healthDot" title="حالة الخادم"></span>
+    <div class="tabs">
+      <button class="tab act" data-view="projects">مشاريعي</button>
+      <button class="tab" data-view="editor">المحرر</button>
+      <button class="tab" data-view="queue">الطابور <span id="queueBadge" style="display:none;background:#ef4444;border-radius:10px;padding:0 6px;font-size:10px"></span></button>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <button type="button" id="btnLock" style="padding:5px 10px;font-size:11px;background:#151515;color:#aaa;border:1px solid #222;border-radius:6px;width:auto;">🔒 قفل</button>
-      <div id="statusBadge" class="badge on">
-        <span>●</span>
-        <span>التطبيق يعمل</span>
+    <label class="mode-sw"><input type="checkbox" id="modeToggle"> وضع متقدم</label>
+  </div>
+
+  <div class="offline-bar" id="offlineBar">لا يوجد اتصال بالخادم — تبقى مشاريعك محفوظة محليًا ولا يمكن البناء الآن.</div>
+
+  <!-- ============ PROJECTS VIEW ============ -->
+  <section id="view-projects">
+    <div class="toolbar">
+      <input type="text" id="inpSearch" placeholder="بحث بالاسم أو الرابط أو الحزمة...">
+      <select id="selFilter">
+        <option value="active">غير المكتملة والنشطة</option>
+        <option value="completed">مكتملة</option>
+        <option value="all">الكل</option>
+        <option value="archived">مؤرشفة</option>
+      </select>
+      <select id="selSort">
+        <option value="updated">الأحدث تعديلًا</option>
+        <option value="build">الأحدث بناءً</option>
+        <option value="name">الاسم</option>
+        <option value="status">الحالة</option>
+      </select>
+    </div>
+    <div class="toolbar">
+      <button class="btn btn-pri" id="btnNewProject">
+        ＋ مشروع جديد
+      </button>
+    </div>
+    <div class="pgrid" id="pgrid"></div>
+    <div class="emptystate" id="emptyState">لا توجد مشاريع بعد. اضغط "مشروع جديد" لبدء التحويل.</div>
+  </section>
+
+  <!-- ============ EDITOR VIEW ============ -->
+  <section id="view-editor" hidden>
+    <div class="edhead">
+      <button class="btn btn-sm" id="btnBackProjects">→ المشاريع</button>
+      <h2 id="edTitle">مشروع جديد</h2>
+      <div class="undo-row">
+        <button class="btn btn-sm" id="btnUndo" title="تراجع">↩ تراجع</button>
+        <button class="btn btn-sm" id="btnRedo" title="إعادة">↪ إعادة</button>
       </div>
-    </div>
-  </div>
-
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-num" id="statTotal">0</div>
-      <div class="stat-lbl">إجمالي الأجهزة</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num" id="statActive">0</div>
-      <div class="stat-lbl">نشطة اليوم</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num" id="statVersions">0</div>
-      <div class="stat-lbl">النسخ المكتشفة</div>
-    </div>
-  </div>
-
-  <div class="card">
-    <label>كلمة مرور المسؤول (Admin Password)</label>
-    <input type="password" id="pass" placeholder="أدخل كلمة المرور لتطبيق التعديلات">
-  </div>
-
-  <!-- نظام إدارة الإصدارات المتقدم والـ Kill Switch المخصص -->
-  <div class="card">
-    <div class="card-title">
-      <span>إدارة وحظر الإصدارات (Version Life-Cycle)</span>
-      <span style="font-size:11px;color:#4ade80;">تحكم فردي وجماعي</span>
+      <span class="savestat" id="saveStat">تم الحفظ</span>
     </div>
 
-    <div class="tgl-row">
-      <span style="color:#ef4444;font-weight:700;">⛔ إيقاف التطبيق العام (لجميع الهواتف)</span>
-      <label class="switch">
-        <input type="checkbox" id="killSwitch">
-        <span class="slider"></span>
-      </label>
-    </div>
-
-    <label>رسالة التوقف المعروضة</label>
-    <input type="text" id="killMsg" value="التطبيق متوقف مؤقتاً لأعمال الصيانة">
-
-    <label>صورة شاشة التوقف الإجبارية (اختياري)</label>
-    <input type="file" id="imgFile" accept="image/*" style="padding:6px;font-size:11px;">
-    <img id="imgPreview" class="img-preview">
-    <input type="hidden" id="imgUrl">
-
-    <div style="margin-top:14px;border-top:1px solid #1a1a1a;padding-top:12px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <label style="margin:0;">حالة النسخ المكتشفة في الشبكة:</label>
-        <span style="font-size:10px;color:#888;" id="verCountBadge">0 نسخ</span>
-      </div>
-      <div id="versionsContainer" style="display:flex;flex-direction:column;gap:6px;">
-        <span style="color:#666;font-size:11px;">جاري تحليل سجلات النسخ بدون تكرار…</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- التحديث الإجباري -->
-  <div class="card">
-    <div class="card-title">التحديث الإجباري (Force Update)</div>
-    <label>الحد الأدنى لرقم النسخة المسموح به (min_version)</label>
-    <input type="number" id="minVer" value="1" min="1">
-    <label>رابط تحميل APK المحدث</label>
-    <input type="url" id="updateUrl" placeholder="https://...">
-    <label>رسالة التحديث</label>
-    <input type="text" id="updMsg" value="يرجى تنزيل الإصدار الأخير لمواصلة الاستخدام.">
-  </div>
-
-  <!-- إعلانات منبثقة تفاعلية فخمة -->
-  <div class="card" style="border-color:#1e293b;">
-    <div class="card-title" style="color:#38bdf8;">📢 نافذة إعلانية منبثقة فخمة (In-Game Modal)</div>
-    <label>عنوان الإعلان (فوق الصورة أو اتركه فارغاً)</label>
-    <input type="text" id="msgTitle" placeholder="عرض خاص، تنبيه هام، مكافأة…">
-    
-    <label>صورة الإعلان (تظهر بمنتصف النافذة المنبثقة)</label>
-    <input type="file" id="adImgFile" accept="image/*" style="padding:6px;font-size:11px;">
-    <img id="adImgPreview" class="img-preview">
-    <input type="hidden" id="adImgUrl">
-
-    <label>نص وتفاصيل الإعلان (اختياري)</label>
-    <textarea id="msgBody" rows="2" placeholder="اكتب تفاصيل الإعلان هنا…"></textarea>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <div>
-        <label>نص زر الإجراء (CTA Button)</label>
-        <input type="text" id="msgBtn" placeholder="مثل: زيارة الرابط، فتح المتجر">
-      </div>
-      <div>
-        <label>رابط يفتحه الزر</label>
-        <input type="url" id="msgBtnUrl" placeholder="https://...">
-      </div>
-    </div>
-  </div>
-
-  <!-- إرسال إشعارات OneSignal -->
-  <div class="card" style="border-color:#1e3a8a;">
-    <div class="card-title" style="color:#60a5fa;">بث إشعار OneSignal لجميع الهواتف</div>
-    <label>عنوان الإشعار</label>
-    <input type="text" id="pushTitle" placeholder="عنوان الإشعار">
-    <label>نص الإشعار</label>
-    <textarea id="pushMsg" rows="2" placeholder="تفاصيل الإشعار الذي سيظهر في شاشة القفل"></textarea>
-    <label>رابط يفتحه الإشعار (اختياري)</label>
-    <input type="url" id="pushUrl" placeholder="https://...">
-    <button type="button" id="btnSendPush" class="btn-push">إرسال الإشعار لجميع الأجهزة الآن</button>
-  </div>
-
-  <!-- كود جافاسكريبت عن بُعد -->
-  <div class="card">
-    <div class="card-title">كود جافاسكريبت عن بُعد (Remote Script)</div>
-    <textarea id="remoteJs" rows="2" placeholder="// كود ينفذ في صفحة الويب في هواتف المستخدمين"></textarea>
-  </div>
-
-  <!-- 📊 سجلات الأجهزة المتقدمة وتهيئة القاعدة -->
-  <div class="card" style="border-color:#1c1c1c;">
-    <div class="card-title">
-      <span>📱 سجلات الأجهزة النشطة والتحليل</span>
-      <button type="button" id="btnInitDb" style="width:auto;padding:5px 10px;font-size:10px;background:#18181b;color:#4ade80;border:1px solid #22c55e33;border-radius:6px;">⚡ تهيئة جداول القاعدة برمجياً</button>
-    </div>
-    <div style="display:flex;gap:6px;margin-bottom:10px;">
-      <input type="text" id="devSearch" placeholder="بحث بمعرف الجهاز أو النسخة أو النظام…" style="margin:0;font-size:11px;padding:8px;">
-      <button type="button" id="btnRefreshStats" style="width:auto;padding:8px 12px;font-size:11px;background:#222;color:#fff;">تحديث</button>
-    </div>
-    <div id="devicesTable" style="max-height:220px;overflow-y:auto;font-size:11px;border:1px solid #181818;border-radius:8px;padding:4px;background:#050505;">
-      <div style="text-align:center;color:#666;padding:14px;">جاري تحميل سجلات الأجهزة…</div>
-    </div>
-  </div>
-
-  <button type="button" id="btnSave">حفظ ونشر التعديلات في Supabase</button>
-</div>
-</div>
-
-<script>
-const API_URL = "/api/config";
-let adminToken = sessionStorage.getItem("dg_auth") || "";
-let cachedDevices = [];
-
-function getAuthHeader() {
-  return { "Content-Type": "application/json", "Authorization": "Bearer " + adminToken };
-}
-
-// 1. نظام جدار الحماية (Firewall Gate)
-async function tryUnlock(pass) {
-  if (!pass) return;
-  const btn = document.getElementById("btnFwUnlock");
-  btn.disabled = true; btn.textContent = "جاري الفحص…";
-  document.getElementById("fwErr").style.display = "none";
-  try {
-    const res = await fetch(API_URL + "?action=verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + pass }
-    });
-    const d = await res.json();
-    if (d.ok) {
-      adminToken = pass;
-      sessionStorage.setItem("dg_auth", pass);
-      document.getElementById("firewallGate").style.display = "none";
-      document.getElementById("mainContent").style.display = "flex";
-      document.getElementById("pass").value = pass;
-      loadConfig();
-      loadStatsAndVersions();
-    } else {
-      document.getElementById("fwErr").style.display = "block";
-    }
-  } catch(e) {
-    alert("تعذر الاتصال بالخادم للتأكد من الصلاحية");
-  }
-  btn.disabled = false; btn.textContent = "فك القفل والدخول";
-}
-
-document.getElementById("btnFwUnlock").onclick = () => tryUnlock(document.getElementById("fwPass").value.trim());
-document.getElementById("fwPass").addEventListener("keydown", e => { if (e.key === "Enter") tryUnlock(e.target.value.trim()); });
-document.getElementById("btnLock").onclick = () => {
-  sessionStorage.removeItem("dg_auth");
-  adminToken = "";
-  document.getElementById("mainContent").style.display = "none";
-  document.getElementById("firewallGate").style.display = "flex";
-  document.getElementById("fwPass").value = "";
-};
-
-if (adminToken) {
-  tryUnlock(adminToken);
-}
-
-document.getElementById("imgFile").onchange = function() {
-  const file = this.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const img = new Image();
-    img.onload = function() {
-      const canvas = document.createElement("canvas");
-      const maxDim = 600;
-      let w = img.width, h = img.height;
-      if (w > h && w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
-      else if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
-      canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, w, h);
-      const webpData = canvas.toDataURL("image/webp", 0.8);
-      document.getElementById("imgUrl").value = webpData;
-      const prev = document.getElementById("imgPreview");
-      prev.src = webpData; prev.style.display = "block";
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-};
-
-function toast(msg) {
-  const t = document.getElementById("toast");
-  t.textContent = msg; t.style.display = "block";
-  setTimeout(() => t.style.display = "none", 3500);
-}
-
-function renderDevicesList(devs) {
-  const container = document.getElementById("devicesTable");
-  if (!devs || !devs.length) {
-    container.innerHTML = "<div style='text-align:center;color:#666;padding:12px;'>لا توجد أجهزة مسجلة في هذا النطاق</div>";
-    return;
-  }
-  let html = "<div style='display:flex;flex-direction:column;gap:4px;'>";
-  devs.slice(0, 80).forEach(d => {
-    const timeAgo = Math.round((Date.now() - new Date(d.last_seen).getTime()) / 60000);
-    const timeStr = timeAgo < 60 ? `${timeAgo} دقيقة` : `${Math.round(timeAgo/60)} ساعة`;
-    html += `<div style="display:flex;align-items:center;justify-content:space-between;background:#0d0d0d;padding:6px 10px;border-radius:6px;border:1px solid #1a1a1a;">
-      <div><span style="color:#60a5fa;font-family:monospace;">${(d.device_id||'').slice(0,10)}…</span> <span style="color:#aaa;margin-inline-start:6px;">نسخة: ${d.version_name||'1.0'} (${d.version_code||1})</span></div>
-      <div style="color:#777;font-size:10px;">Android ${d.android_os||'?'} · قبل ${timeStr}</div>
-    </div>`;
-  });
-  html += "</div>";
-  container.innerHTML = html;
-}
-
-document.getElementById("devSearch").oninput = function() {
-  const q = this.value.trim().toLowerCase();
-  const filtered = cachedDevices.filter(d => 
-    (d.device_id||"").toLowerCase().includes(q) ||
-    (d.version_name||"").toLowerCase().includes(q) ||
-    String(d.android_os||"").includes(q)
-  );
-  renderDevicesList(filtered);
-};
-
-document.getElementById("btnRefreshStats").onclick = () => loadStatsAndVersions();
-
-document.getElementById("btnInitDb").onclick = async () => {
-  if (!confirm("هل تريد تهيئة وإنشاء الجداول تلقائياً في Supabase برمجياً؟")) return;
-  try {
-    const res = await fetch(API_URL + "?action=init_db", { method: "POST", headers: getAuthHeader() });
-    const d = await res.json();
-    if (d.ok) toast("✓ " + d.msg);
-    else alert("تنبيه: " + (d.error || "تحقق من المفاتيح"));
-  } catch(e) { alert("تعذر الاتصال بالخادم"); }
-};
-
-let currentKilledVersions = [];
-
-async function loadStatsAndVersions() {
-  if (!adminToken) return;
-  try {
-    const res = await fetch(API_URL + "?stats=1", { headers: getAuthHeader() });
-    const d = await res.json();
-    if (!d.ok || !Array.isArray(d.devices)) return;
-    const devs = d.devices;
-    cachedDevices = devs;
-    document.getElementById("statTotal").textContent = devs.length;
-
-    const now = Date.now();
-    const active = devs.filter(x => x.last_seen && (now - new Date(x.last_seen).getTime()) < 86400000);
-    document.getElementById("statActive").textContent = active.length;
-
-    // تجميع النسخ بدون تكرار مع إحصائيات الأجهزة لكل نسخة
-    const vStats = new Map();
-    devs.forEach(x => {
-      const vCode = String(x.version_code || "1");
-      const vName = String(x.version_name || "1.0");
-      const key = vCode; // المفتاح الفريد الصارم لمنع أي تكرار
-      if (!vStats.has(key)) {
-        vStats.set(key, { code: vCode, name: vName, count: 0, active24: 0, lastSeen: x.last_seen });
-      }
-      const st = vStats.get(key);
-      st.count++;
-      if (x.last_seen && (now - new Date(x.last_seen).getTime()) < 86400000) st.active24++;
-    });
-
-    document.getElementById("statVersions").textContent = vStats.size;
-    document.getElementById("verCountBadge").textContent = `${vStats.size} نسخ مكتشفة`;
-
-    const cfgRes = await fetch(API_URL);
-    const cfg = await cfgRes.json();
-    currentKilledVersions = Array.isArray(cfg.killed_versions) ? cfg.killed_versions.map(String) : [];
-
-    const container = document.getElementById("versionsContainer");
-    container.innerHTML = "";
-    if (vStats.size === 0) {
-      container.innerHTML = "<span style='color:#666;font-size:11px;'>لا توجد أجهزة مسجلة بعد في الشبكة.</span>";
-      return;
-    }
-
-    vStats.forEach((v) => {
-      const isKilled = currentKilledVersions.includes(v.code) || currentKilledVersions.includes(v.name);
-      const row = document.createElement("div");
-      row.style.cssText = `display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:#0d0d0d;border-radius:8px;border:1px solid ${isKilled ? '#451a1a' : '#1e293b'};`;
-      row.innerHTML = `
-        <div>
-          <div style="font-weight:700;font-size:12px;color:${isKilled ? '#f87171' : '#4ade80'};">
-            ${isKilled ? '⛔ نسخة معطلة' : '✓ نسخة نشطة'}: v${v.name} (Code: ${v.code})
+    <form id="buildForm" autocomplete="off" onsubmit="return false">
+      <!-- basic -->
+      <div class="card">
+        <div class="acc-head" data-acc="accBasic"><span>معلومات وهوية المشروع</span><span class="acc-arr">▾</span></div>
+        <div class="acc-body" id="accBasic">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div><label>الاسم الداخلي</label><input type="text" data-bind="internalName" placeholder="مشروعي الأول"></div>
+            <div><label>اسم التطبيق الظاهر *</label><input type="text" data-bind="appName" placeholder="My App" maxlength="60"></div>
           </div>
-          <div style="font-size:10px;color:#777;margin-top:2px;">
-            إجمالي الأجهزة: ${v.count} · نشطة اليوم: ${v.active24}
+          <label>وصف داخلي (اختياري)</label>
+          <input type="text" data-bind="description" placeholder="الغرض من التطبيق">
+          <label>أيقونة التطبيق (PNG/JPEG/WebP — بحد أقصى 3MB)</label>
+          <input type="file" id="iconInput" accept="image/png,image/jpeg,image/webp" style="padding:8px;font-size:12px">
+          <div class="mockup-wrap">
+            <div class="phone-mockup">
+              <div class="m-bar" id="mockSb">
+                <span>9:41</span><span>100%</span>
+              </div>
+              <div id="mockPb" class="m-pb"></div>
+              <div class="m-screen" id="mockScreen">
+                <iframe
+                  id="mockIframe"
+                  src="/preview/frame"
+                  style="width:100%;height:100%;border:0;background:#0d0d0d;"
+                ></iframe>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;justify-content:center;">
+            <button type="button" class="btn btn-sm" id="btnPrevSite">
+              معاينة الموقع
+            </button>
+            <button type="button" class="btn btn-sm" id="btnPrevOff">
+              معاينة Offline
+            </button>
+          </div>
+          <div style="text-align:center;margin-top:6px;">
+            <span id="prevName" class="app-name-preview">My App</span>
           </div>
         </div>
-        <button type="button" class="btn-toggle-ver" data-code="${v.code}" style="width:auto;padding:6px 12px;font-size:11px;border-radius:6px;background:${isKilled ? '#22c55e' : '#ef4444'};color:#fff;">
-          ${isKilled ? 'استعادة وتفعيل' : 'إيقاف النسخة'}
-        </button>
-      `;
-      container.appendChild(row);
-    });
+      </div>
 
-    document.querySelectorAll(".btn-toggle-ver").forEach(btn => {
-      btn.onclick = () => {
-        const c = btn.dataset.code;
-        if (currentKilledVersions.includes(c)) {
-          currentKilledVersions = currentKilledVersions.filter(x => x !== c);
-        } else {
-          currentKilledVersions.push(c);
-        }
-        document.getElementById("btnSave").click();
-      };
-    });
+      <!-- website -->
+      <div class="card">
+        <div class="acc-head" data-acc="accWeb"><span>الموقع وبيانات الحزمة</span><span class="acc-arr">▾</span></div>
+        <div class="acc-body" id="accWeb">
+          <label>رابط الموقع *</label>
+          <div style="display:flex;gap:6px;margin-bottom:14px">
+            <input type="url" data-bind="url" placeholder="https://example.com" style="margin:0;flex:1">
+            <button type="button" class="btn btn-sm" id="btnAudit" style="width:auto">فحص</button>
+          </div>
+          <div id="diagBox" class="diag-res"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div><label>Package Name *</label><input type="text" data-bind="packageName" placeholder="com.example.app" dir="ltr" style="text-align:left"></div>
+            <div><label>النسخة versionName</label><input type="text" data-bind="config.versionName" placeholder="1.0" dir="ltr" style="text-align:left"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div><label>رقم النسخة versionCode</label><input type="number" data-bind="config.versionCode" min="1" value="1"></div>
+            <div></div>
+          </div>
+        </div>
+      </div>
 
-    renderDevicesList(devs);
-  } catch(e) {
-    console.error("loadStatsAndVersions error:", e);
-  }
+      <!-- remote control & notifications -->
+      <div class="card adv">
+        <div class="acc-head" data-acc="accRemote">
+          <span>التحكم عن بُعد والإشعارات (Remote Control)</span>
+          <span class="acc-arr">▾</span>
+        </div>
+        <div class="acc-body" id="accRemote" hidden>
+          <label class="tgl-item">
+            <div class="tgl-left">إبقاء الشاشة نشطة (Keep Screen On)</div>
+            <input type="checkbox" class="hide-chk" data-bind="config.keepScreen">
+            <span class="tgl-sw"></span>
+          </label>
+          <div style="margin:10px 0;">
+            <label>نمط المظهر (Theme Mode)</label>
+            <select data-bind="config.themeMode">
+              <option value="auto">تلقائي (حسب نظام الهاتف)</option>
+              <option value="dark">داكن دائمًا (Dark Mode)</option>
+              <option value="light">فاتح دائمًا (Light Mode)</option>
+            </select>
+          </div>
+          <label>رابط التحكم بالخادم (Remote Config HTTPS URL)</label>
+          <input type="url" data-bind="config.remoteUrl" placeholder="https://api.mycleanapp.com/config.json">
+          <label>معرّف OneSignal App ID للإشعارات</label>
+          <input type="text" data-bind="config.onesignalId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+          <label>كود مخصص عن بُعد (Remote Script Sandbox — حد 500 سطر)</label>
+          <textarea data-bind="config.remoteScript" class="off-editor" placeholder="// JavaScript يعمل بأمان داخل التطبيق"></textarea>
+        </div>
+      </div>
+
+      <!-- security -->
+      <div class="card">
+        <div class="acc-head" data-acc="accSec">
+          <span>5. الأمان والتصاريح (Security)</span>
+          <span class="acc-arr">▾</span>
+        </div>
+        <div class="acc-body" id="accSec">
+          <div class="sec-score">
+            <span>مؤشر الأمان</span>
+            <span id="scoreVal">65%</span>
+          </div>
+          <div class="sec-bar"><div id="scoreFill" class="sec-fill"></div></div>
+          <div class="sec-grid">
+            <label class="tgl-item"><div class="tgl-left">قفل النطاق (Domain Lock)</div><input type="checkbox" class="hide-chk" data-bind="config.dLock" checked><span class="tgl-sw"></span></label>
+            <label class="tgl-item"><div class="tgl-left">منع تحديد ونسخ النصوص</div><input type="checkbox" class="hide-chk" data-bind="config.nCopy"><span class="tgl-sw"></span></label>
+            <label class="tgl-item"><div class="tgl-left">تعطيل القائمة بزر الفأرة الأيمن</div><input type="checkbox" class="hide-chk" data-bind="config.noCtx"><span class="tgl-sw"></span></label>
+            <label class="tgl-item"><div class="tgl-left">حذف سجلات console تلقائياً</div><input type="checkbox" class="hide-chk" data-bind="config.sLogs"><span class="tgl-sw"></span></label>
+            <label class="tgl-item"><div class="tgl-left">فحص سلامة التوقيع (Anti-Tamper)</div><input type="checkbox" class="hide-chk" data-bind="config.aTamp" checked><span class="tgl-sw"></span></label>
+            <label class="tgl-item"><div class="tgl-left">طلب تصريح الكاميرا (Camera)</div><input type="checkbox" class="hide-chk" data-bind="config.permCam"><span class="tgl-sw"></span></label>
+            <label class="tgl-item"><div class="tgl-left">طلب تصريح الميكروفون (Mic)</div><input type="checkbox" class="hide-chk" data-bind="config.permMic"><span class="tgl-sw"></span></label>
+            <label class="tgl-item"><div class="tgl-left">طلب تصريح الموقع (Location)</div><input type="checkbox" class="hide-chk" data-bind="config.permLoc"><span class="tgl-sw"></span></label>
+            <label class="tgl-item"><div class="tgl-left">مدير التنزيلات الأصلي (Download)</div><input type="checkbox" class="hide-chk" data-bind="config.dlMgr" checked><span class="tgl-sw"></span></label>
+            <label class="tgl-item"><div class="tgl-left">حظر الاتصال غير المشفر (HTTP)</div><input type="checkbox" class="hide-chk" data-bind="config.bHttp" checked><span class="tgl-sw"></span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- window / webview (advanced) -->
+      <div class="card adv">
+        <div class="acc-head" data-acc="accWin"><span>واجهة العرض وWebView</span><span class="acc-arr">▾</span></div>
+        <div class="acc-body" id="accWin" hidden>
+          <label style="font-size:11px;color:#888">اتجاه الشاشة</label>
+          <div class="ks-opts" id="oriOpts">
+            <div class="ks-opt-card active" data-ori="portrait">عمودي</div>
+            <div class="ks-opt-card" data-ori="landscape">أفقي</div>
+            <div class="ks-opt-card" data-ori="sensor">تلقائي</div>
+          </div>
+          <label class="tgl-item"><div class="tgl-left">شاشة كاملة غامرة</div><input type="checkbox" class="hide-chk" data-bind="config.fScreen"><span class="tgl-sw"></span></label>
+          <label class="tgl-item"><div class="tgl-left">شريط علوي أصلي (عنوان + زر رجوع)</div><input type="checkbox" class="hide-chk" data-bind="config.tBar"><span class="tgl-sw"></span></label>
+          <label class="tgl-item"><div class="tgl-left">التخزين المحلي (DOM Storage)</div><input type="checkbox" class="hide-chk" data-bind="config.domStorage" checked><span class="tgl-sw"></span></label>
+          <label class="tgl-item"><div class="tgl-left">السماح بالتكبير والتصغير (Zoom)</div><input type="checkbox" class="hide-chk" data-bind="config.webZoom"><span class="tgl-sw"></span></label>
+          <label class="tgl-item"><div class="tgl-left">فتح روابط الاتصال الخارجية (Intents)</div><input type="checkbox" class="hide-chk" data-bind="config.openIntents" checked><span class="tgl-sw"></span></label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div><label>نسبة حجم النص (Text Zoom %)</label><input type="number" data-bind="config.textZoom" min="50" max="200" value="100"></div>
+            <div></div>
+          </div>
+          <label>نطاقات إضافية مسموحة (مفصولة بفاصلة)</label>
+          <input type="text" data-bind="config.exDomains" placeholder="cdn.example.com, api.example.com" dir="ltr" style="text-align:left">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label>لون شريط الحالة</label>
+              <input type="color" data-bind="config.sbCol" style="padding:2px;height:40px;cursor:pointer;">
+            </div>
+            <div>
+              <label>لون شريط التنقل</label>
+              <input type="color" data-bind="config.nbCol" style="padding:2px;height:40px;cursor:pointer;">
+            </div>
+          </div>
+          <label>User Agent مخصص (اختياري)</label>
+          <input type="text" data-bind="config.cUa" dir="ltr" style="text-align:left" maxlength="512">
+        </div>
+      </div>
+
+      <!-- navigation -->
+      <div class="card adv">
+        <div class="acc-head" data-acc="accNav"><span>التنقل وسلوك الرجوع</span><span class="acc-arr">▾</span></div>
+        <div class="acc-body" id="accNav" hidden>
+          <label class="tgl-item"><div class="tgl-left">الضغط مرتين للخروج من التطبيق</div><input type="checkbox" class="hide-chk" data-bind="config.dBack" checked><span class="tgl-sw"></span></label>
+          <label class="tgl-item"><div class="tgl-left">شريط تقدم تحميل الصفحة</div><input type="checkbox" class="hide-chk" data-bind="config.pBar" checked><span class="tgl-sw"></span></label>
+        </div>
+      </div>
+
+      <!-- offline -->
+      <div class="card adv">
+        <div class="acc-head" data-acc="accOff">
+          <span>3. العمل بدون إنترنت (Offline)</span>
+          <span class="acc-arr">▾</span>
+        </div>
+        <div class="acc-body" id="accOff" hidden>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <input type="file" id="offFileInput" accept=".html,.htm" style="padding:6px;font-size:11px;flex:1;">
+            <button type="button" class="btn btn-sm btn-dan" id="btnDelOff">حذف الملف</button>
+          </div>
+          <textarea id="offText" data-bind="config.offlineHtml" class="off-editor" placeholder="<!DOCTYPE html><html><body><h2>لا يوجد اتصال بالإنترنت</h2></body></html>"></textarea>
+          <div id="lineCount" class="line-count">الحجم: 0 / 256KB</div>
+        </div>
+      </div>
+
+      <!-- signing -->
+      <div class="card adv">
+        <div class="acc-head" data-acc="accKs"><span>التوقيع (Build حاليًا: Debug موقّع تلقائيًا)</span><span class="acc-arr">▾</span></div>
+        <div class="acc-body" id="accKs" hidden>
+          <div style="font-size:11px;color:#888;margin-bottom:10px">البناء الحالي ينتج APK نوعه <b>Debug</b> موقّع بمفتاح تطوير — مناسب للاختبار والاستخدام الشخصي. لتوقيع Release خاص بك أنشئ مفتاحًا واحتفظ به لديك (لا نخزن كلمة مرورك):</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <input type="text" id="ksAlias" placeholder="Alias (مثل mykey)">
+            <input type="password" id="ksPass" placeholder="كلمة مرور المفتاح (6+ أحرف)">
+            <input type="text" id="ksCN" placeholder="اسمك CN">
+            <input type="text" id="ksOrg" placeholder="المنظمة O">
+          </div>
+          <button type="button" class="btn" id="btnGenKey" style="width:100%">إنشاء وتحميل Keystore خاص</button>
+        </div>
+      </div>
+
+      <!-- build actions -->
+      <div class="card">
+        <button id="buildButton" class="btn btn-pri" style="width:100%;padding:15px;font-size:15px" type="button">إنشاء APK</button>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button id="cancelBtn" class="btn btn-dan" style="display:none;flex:1">إلغاء البناء</button>
+          <button id="aiBtn" class="btn" style="display:none;flex:1">تحليل الخطأ بالذكاء الاصطناعي</button>
+        </div>
+        <div id="queueBox" class="q-card">أنت في الطابور…</div>
+        <div id="statusBox" class="status">
+          <div class="status-title" id="statusTitle">جاري البناء…</div>
+          <div id="statusText" style="font-size:12px;color:#999"></div>
+          <div class="progress"><div id="progressBar" class="progress-bar" style="width:0%"></div></div>
+          <div id="stageList" style="margin-top:12px"></div>
+          <div id="term" class="term"></div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button class="btn btn-sm" id="btnCopyLogs">نسخ السجلات</button>
+            <span style="flex:1"></span>
+            <span class="qi-meta" id="buildTiming"></span>
+          </div>
+        </div>
+        <div id="errBox" class="errcard">
+          <h3>فشل بناء التطبيق</h3>
+          <div class="errrow">المرحلة: <b id="errStage">—</b></div>
+          <div class="errrow">التصنيف: <b id="errCode">—</b></div>
+          <div class="errrow">السبب: <b id="errMsg">—</b></div>
+          <div class="errrow">المعرف التشخيصي: <b id="errDiag">—</b></div>
+          <div class="errrow" id="errAi" style="color:#a5b4fc"></div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn btn-sm" id="btnErrLogs">عرض السجلات</button>
+            <button class="btn btn-sm" id="btnErrCopy">نسخ التشخيص</button>
+            <button class="btn btn-sm btn-pri" id="btnRetry">إعادة البناء</button>
+          </div>
+        </div>
+        <div id="downloadBox" class="download"><a id="downloadLink" href="#">تحميل APK</a></div>
+      </div>
+    </form>
+    <div class="footer">Web APK Builder v2 — بلا حسابات، مشاريعك محفوظة في متصفحك</div>
+  </section>
+
+  <!-- تم إلغاء واجهة AI -->
+
+  <!-- ============ QUEUE VIEW ============ -->
+  <section id="view-queue" hidden>
+    <div class="card">
+      <div class="acc-head"><span>الطابور والمهام النشطة</span></div>
+      <div style="margin-top:12px" id="queueList"></div>
+      <div class="emptystate" id="queueEmpty">لا توجد مهام نشطة.</div>
+    </div>
+    <div class="card">
+      <div class="acc-head"><span>سعة الخادم</span></div>
+      <div id="capsBox" style="margin-top:12px;font-size:11px;color:#999;line-height:2"></div>
+    </div>
+  </section>
+
+</div>
+<script>
+"use strict";
+/* ================= utils ================= */
+const $ = id => document.getElementById(id);
+function el(tag, cls, text){ const e=document.createElement(tag); if(cls)e.className=cls; if(text!=null)e.textContent=text; return e; }
+function getPath(o,p){ return p.split('.').reduce((a,k)=> (a==null?a:a[k]), o); }
+function setPath(o,p,v){ const ks=p.split('.'); let a=o; for(let i=0;i<ks.length-1;i++){ if(a[ks[i]]==null)a[ks[i]]={}; a=a[ks[i]]; } a[ks[ks.length-1]]=v; }
+function uid(){ return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function timeAgo(ts){ if(!ts)return '—'; const s=(Date.now()-ts)/1000; if(s<60)return 'قبل لحظات'; if(s<3600)return `قبل ${Math.floor(s/60)} دقيقة`; if(s<86400)return `قبل ${Math.floor(s/3600)} ساعة`; return `قبل ${Math.floor(s/86400)} يوم`; }
+function fmtBytes(b){ if(!b)return '—'; if(b<1024)return b+' B'; if(b<1048576)return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(2)+' MB'; }
+function fmtDur(ms){ if(!ms)return '—'; const s=Math.round(ms/1000); if(s<60)return s+' ث'; return Math.floor(s/60)+' د '+ (s%60)+' ث'; }
+
+function toast(msg,type){
+  type=type||'inf';
+  const box=$('toast-box');
+  while(box.children.length>2)box.removeChild(box.firstChild);
+  const t=el('div','toast toast-'+type); t.appendChild(el('span',null,'●')); t.appendChild(el('span',null,msg));
+  box.appendChild(t); setTimeout(()=>t.remove(),3400);
 }
-// محول صور الإعلانات المنبثقة
-document.getElementById("adImgFile").onchange = function() {
-  const file = this.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const img = new Image();
-    img.onload = function() {
-      const canvas = document.createElement("canvas");
-      const maxDim = 600;
-      let w = img.width, h = img.height;
-      if (w > h && w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
-      else if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-      const webp = canvas.toDataURL("image/webp", 0.85);
-      document.getElementById("adImgUrl").value = webp;
-      const prev = document.getElementById("adImgPreview");
-      prev.src = webp; prev.style.display = "block";
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
+
+/* ================= constants ================= */
+const SCHEMA=1;
+const ACTIVE_STATES=['QUEUED','PREPARING','GENERATING','VALIDATING','BUILDING','VERIFYING','PACKAGING','CANCEL_REQUESTED'];
+const CHIP={
+  DRAFT:{label:'مسودة',cls:'c-draft'},
+  QUEUED:{label:'في الطابور',cls:'c-queued'},
+  BUILDING:{label:'قيد البناء',cls:'c-building'},
+  COMPLETED:{label:'مكتمل',cls:'c-completed'},
+  FAILED:{label:'فشل',cls:'c-failed'},
+  CANCELLED:{label:'ملغي',cls:'c-cancelled'},
+  EXPIRED:{label:'انتهت الصلاحية',cls:'c-expired'},
+  INTERRUPTED:{label:'متوقف',cls:'c-failed'}
 };
+const STAGE_AR={QUEUED:'في الطابور',PREPARING:'تجهيز البيئة',GENERATING:'توليد المشروع',VALIDATING:'التحقق',BUILDING:'Gradle يبني',VERIFYING:'فحص APK',PACKAGING:'النشر',COMPLETED:'اكتمل',FAILED:'فشل',CANCELLED:'أُلغي',EXPIRED:'انتهت الصلاحية',INTERRUPTED:'توقف'};
 
-async function loadConfig() {
-  try {
-    const res = await fetch(API_URL);
-    const data = await res.json();
-    document.getElementById("killSwitch").checked = !!data.kill_switch;
-    document.getElementById("killMsg").value = data.kill_msg || "";
-    document.getElementById("minVer").value = data.min_version || 1;
-    document.getElementById("updateUrl").value = data.update_url || "";
-    document.getElementById("updMsg").value = data.upd_msg || "";
-    document.getElementById("msgTitle").value = data.msg_title || "";
-    document.getElementById("msgBody").value = data.msg_body || "";
-    document.getElementById("msgBtn").value = data.msg_btn || "";
-    document.getElementById("msgBtnUrl").value = data.msg_btn_url || "";
-    document.getElementById("adImgUrl").value = data.msg_img || "";
-    document.getElementById("imgUrl").value = data.img_url || "";
-    document.getElementById("remoteJs").value = data.remote_js || "";
+/* ================= IndexedDB ================= */
+let db=null;
+function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open('webapk_db',1);
+  r.onupgradeneeded=e=>{ e.target.result.createObjectStore('projects',{keyPath:'id'}); };
+  r.onsuccess=e=>res(e.target.result); r.onerror=()=>rej(r.error); }); }
+function tx(mode){ return db.transaction('projects',mode).objectStore('projects'); }
+function dbAll(){ return new Promise(res=>{ const out=[]; const c=tx('readonly').openCursor();
+  c.onsuccess=e=>{ const cur=e.target.result; if(cur){out.push(cur.value);cur.continue();} else res(out); }; }); }
+function dbPut(p){ return new Promise(res=>{ tx('readwrite').put(p).onsuccess=()=>res(); }); }
+function dbDel(id){ return new Promise(res=>{ tx('readwrite').delete(id).onsuccess=()=>res(); }); }
 
-    if (data.msg_img) {
-      const prevAd = document.getElementById("adImgPreview");
-      prevAd.src = data.msg_img; prevAd.style.display = "block";
-    }
+/* ================= project model ================= */
+function defaultConfig(){ return {
+  dLock:true,bHttp:true,nCopy:false,
+  noCtx:false,aTamp:true,sLogs:false,
+  orient:'portrait',fScreen:false,
+  cUa:'',exDomains:'',dBack:true,
+  pBar:true,tBar:false,domStorage:true,
+  webZoom:false,openIntents:true,
+  permCam:false,permMic:false,
+  permLoc:false,dlMgr:true,
+  textZoom:100,sbCol:'#000000',
+  nbCol:'#000000',keepScreen:false,
+  themeMode:'auto',remoteUrl:'',
+  onesignalId:'',remoteScript:'',
+  versionCode:1,versionName:'1.0',
+  offlineHtml:''
+}; }
+function newProject(){ const now=Date.now(); return {
+  id:uid(), schemaVersion:SCHEMA, internalName:'', appName:'', description:'', url:'',
+  packageName:'com.webapp.app', icon:null, config:defaultConfig(),
+  status:'DRAFT', archived:false, createdAt:now, updatedAt:now,
+  lastBuildId:null,lastBuildStatus:null,lastBuildAt:null,lastSuccessfulBuildAt:null,
+  buildCount:0, artifactState:'none', lastErrorSummary:'', dirty:false, revision:0, history:[] }; }
+function migrate(p){ const d=newProject();
+  for(const k of Object.keys(d)) if(p[k]===undefined) p[k]=d[k];
+  p.config=Object.assign(defaultConfig(), p.config||{});
+  p.schemaVersion=SCHEMA; return p; }
 
-    if (data.img_url) {
-      const prev = document.getElementById("imgPreview");
-      prev.src = data.img_url; prev.style.display = "block";
-    }
-
-    const badge = document.getElementById("statusBadge");
-    if (data.kill_switch) {
-      badge.className = "badge kill";
-      badge.innerHTML = "<span>●</span><span>التطبيق معطّل ⛔</span>";
-    } else {
-      badge.className = "badge on";
-      badge.innerHTML = "<span>●</span><span>التطبيق يعمل ✓</span>";
-    }
-  } catch(e) {}
+/* ================= state ================= */
+let clientSid = localStorage.getItem(
+  'webapk_sid'
+);
+if (!clientSid) {
+  clientSid = uid() + uid();
+  localStorage.setItem(
+    'webapk_sid', clientSid
+  );
 }
+let projects=[], current=null, saveTimer=null, dirty=false;
+let undoStack=[], redoStack=[], clickSeq=0;
+let evtSrc=null, pollTimer=null, trackingJob=null, trackProjectId=null;
 
-document.getElementById("btnSave").onclick = async () => {
-  const pass = document.getElementById("pass").value.trim();
-  if (!pass) return alert("اكتب كلمة مرور المسؤول أولاً!");
+/* ================= views ================= */
+function showView(v){
+  ['projects','editor','queue','ai'].forEach(x=>{ $('view-'+x).hidden=(x!==v); });
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('act',t.dataset.view===v));
+  if(v==='queue') renderQueue();
+}
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>showView(t.dataset.view));
 
-  // تجميع النسخ المحددة من مربعات الاختيار
-  const selectedVersions = [];
-  document.querySelectorAll("#versionCheckboxes input[type='checkbox']:checked").forEach(cb => {
-    selectedVersions.push(cb.value);
+/* accordions */
+document.querySelectorAll('.acc-head[data-acc]').forEach(h=>{
+  h.onclick=()=>{ const b=$(h.dataset.acc); b.hidden=!b.hidden;
+    h.querySelector('.acc-arr').textContent=b.hidden?'▾':'▴'; };
+});
+
+/* ================= projects list ================= */
+function chipFor(p){
+  let st=p.status||'DRAFT';
+  if(p.archived && st==='DRAFT') {}
+  const c=CHIP[st]||CHIP.DRAFT;
+  return el('span','chip '+c.cls, c.label);
+}
+function renderProjects(){
+  const q=($('inpSearch').value||'').trim().toLowerCase();
+  const f=$('selFilter').value, s=$('selSort').value;
+  let list=projects.filter(p=>{
+    if(f==='archived') return p.archived;
+    if(p.archived) return false;
+    if(f==='completed') return p.status==='COMPLETED';
+    if(f==='active') return p.status!=='COMPLETED';
+    return true;
   });
+  if(q) list=list.filter(p=>[p.internalName,p.appName,p.url,p.packageName].join(' ').toLowerCase().includes(q));
+  list.sort((a,b)=> s==='name'?(a.appName||a.internalName).localeCompare(b.appName||b.internalName)
+    : s==='status'?(a.status>b.status?1:-1)
+    : s==='build'?(b.lastBuildAt||0)-(a.lastBuildAt||0)
+    : b.updatedAt-a.updatedAt);
+  const g=$('pgrid'); g.textContent='';
+  $('emptyState').style.display=list.length?'none':'block';
+  list.forEach(p=>{
+    const card=el('div','pcard');
+    const top=el('div','pcard-top');
+    const ico=el('div','pico');
+    if(p.icon&&p.icon.dataUrl){ const img=document.createElement('img'); img.src=p.icon.dataUrl; img.alt=''; ico.appendChild(img); }
+    else ico.innerHTML='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>';
+    top.appendChild(ico);
+    const names=el('div','pnames');
+    names.appendChild(el('div','pname', p.appName||p.internalName||'بدون اسم'));
+    names.appendChild(el('div','pint', p.internalName?('داخلي: '+p.internalName):' '));
+    names.appendChild(el('div','purl', p.url||'—'));
+    top.appendChild(names); top.appendChild(chipFor(p));
+    card.appendChild(top);
+    const meta=el('div','pmeta');
+    meta.appendChild(el('span',null,`آخر تعديل: ${timeAgo(p.updatedAt)} · البناءات: ${p.buildCount||0} · نسخة: ${p.config.versionName} (${p.config.versionCode})`));
+    meta.appendChild(el('span',null, p.lastBuildAt?`آخر بناء: ${timeAgo(p.lastBuildAt)} — ${(CHIP[p.lastBuildStatus]||{label:p.lastBuildStatus}).label}`:'لم يُبنَ بعد'));
+    if(p.artifactState==='available') meta.appendChild(el('span',null,'✓ ملف APK متاح للتحميل'));
+    if(p.artifactState==='expired') meta.appendChild(el('span',null,'انتهت صلاحية APK على الخادم — أعد البناء'));
+    card.appendChild(meta);
+    const row=el('div','prow');
+    const mk=(label,act,cls)=>{ const b=el('button','btn btn-sm'+(cls?' '+cls:''),label); b.dataset.act=act; b.dataset.id=p.id; row.appendChild(b); };
+    mk('فتح','open'); mk('بناء','build','btn-pri');
+    mk('نسخ','dup'); mk('تصدير','exp'); mk(p.archived?'استعادة':'أرشفة','arch'); mk('حذف','del','btn-dan');
+    card.appendChild(row);
+    g.appendChild(card);
+  });
+}
+$('pgrid').addEventListener('click',async e=>{
+  const b=e.target.closest('button[data-act]'); if(!b)return;
+  const p=projects.find(x=>x.id===b.dataset.id); if(!p)return;
+  const act=b.dataset.act;
+  if(act==='open') openProject(p.id);
+  else if(act==='build'){ openProject(p.id); startBuild(); }
+  else if(act==='dup') duplicateProject(p);
+  else if(act==='exp') exportProject(p);
+  else if(act==='arch'){ p.archived=!p.archived; p.updatedAt=Date.now(); await dbPut(p); renderProjects(); toast(p.archived?'تمت الأرشفة':'تمت الاستعادة','inf'); }
+  else if(act==='del') deleteProject(p);
+});
+$('inpSearch').oninput=renderProjects;
+$('selFilter').onchange=renderProjects;
+$('selSort').onchange=renderProjects;
 
-  const payload = {
-    kill_switch: document.getElementById("killSwitch").checked,
-    kill_msg: document.getElementById("killMsg").value,
-    killed_versions: currentKilledVersions,
-    min_version: parseInt(document.getElementById("minVer").value) || 1,
-    update_url: document.getElementById("updateUrl").value,
-    upd_msg: document.getElementById("updMsg").value,
-    msg_title: document.getElementById("msgTitle").value,
-    msg_body: document.getElementById("msgBody").value,
-    msg_img: document.getElementById("adImgUrl").value,
-    msg_btn: document.getElementById("msgBtn").value,
-    msg_btn_url: document.getElementById("msgBtnUrl").value,
-    img_url: document.getElementById("imgUrl").value,
-    remote_js: document.getElementById("remoteJs").value
+/* ================= editor ================= */
+function fillForm(){
+  if(!current) return;
+  $('edTitle').textContent=current.appName||current.internalName||'مشروع جديد';
+  document.querySelectorAll('[data-bind]').forEach(inp=>{
+    const v=getPath(current,inp.dataset.bind);
+    if(inp.type==='checkbox') inp.checked=!!v; else inp.value=(v==null?'':v);
+  });
+  document.querySelectorAll('#oriOpts .ks-opt-card').forEach(c=>c.classList.toggle('active',c.dataset.ori===current.config.orient));
+  const pn = $('prevName');
+  if (pn) {
+    pn.textContent =
+      current.appName || 'My App';
+  }
+  const mi=$('mockIco');
+  if(current.icon&&current.icon.dataUrl){ mi.textContent=''; const img=document.createElement('img'); img.src=current.icon.dataUrl; mi.appendChild(img); }
+  updateScore(); updateOfflineCount();
+  $('saveStat').textContent='تم الحفظ'; $('saveStat').classList.remove('dirty');
+}
+function openProject(id){
+  stopTracking();
+  current=projects.find(p=>p.id===id); if(!current)return;
+  undoStack=[]; redoStack=[];
+  fillForm(); resetBuildPanels();
+  if(ACTIVE_STATES.includes(current.lastBuildStatus)&&current.lastBuildId){
+    trackJob(current.lastBuildId,current.id,true);
+  } else if(current.lastBuildStatus==='COMPLETED'&&current.lastBuildId){
+    refreshJobInfo(current.lastBuildId);
+  }
+  showView('editor');
+}
+function snapshot(){ return JSON.stringify(current); }
+function pushUndo(){ if(!current)return; undoStack.push(snapshot()); if(undoStack.length>30)undoStack.shift(); redoStack=[]; }
+function applySnapshot(s){ if(!s)return; current=JSON.parse(s); fillForm(); dbPut(current); renderProjects(); }
+$('btnUndo').onclick=()=>{ if(!undoStack.length)return toast('لا يوجد تراجع','inf'); redoStack.push(snapshot()); applySnapshot(undoStack.pop()); };
+$('btnRedo').onclick=()=>{ if(!redoStack.length)return toast('لا يوجد إعادة','inf'); undoStack.push(snapshot()); applySnapshot(redoStack.pop()); };
+
+function markDirtyUI(){ dirty=true; $('saveStat').textContent='تعديلات غير محفوظة…'; $('saveStat').classList.add('dirty'); }
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(doSaveNow,450);
+}
+async function doSaveNow(){
+  if(!current||!dirty) return;
+  current.dirty=false; dirty=false;
+  current.updatedAt=Date.now(); current.revision=(current.revision||0)+1;
+  await dbPut(current);
+  const i=projects.findIndex(p=>p.id===current.id); if(i>=0)projects[i]=current;
+  $('saveStat').textContent='تم الحفظ'; $('saveStat').classList.remove('dirty');
+  renderProjects();
+}
+function bindChange(inp,value){
+  pushUndo(); setPath(current,inp.dataset.bind,value);
+  current.dirty=true; markDirtyUI();
+  if (
+    inp.dataset.bind === 'appName' &&
+    $('prevName')
+  ) {
+    $('prevName').textContent =
+      current.appName || 'My App';
+  }
+  if(inp.dataset.bind.startsWith('config.'))updateScore();
+  if(inp.dataset.bind==='config.offlineHtml')updateOfflineCount();
+  scheduleSave();
+}
+document.querySelectorAll('[data-bind]').forEach(inp=>{
+  inp.addEventListener('input',()=>{
+    if(!current)return;
+    const v=inp.type==='checkbox'?inp.checked:(inp.type==='number'?(parseInt(inp.value)||0):inp.value);
+    bindChange(inp,v);
+  });
+});
+$('oriOpts').addEventListener('click',e=>{
+  const c=e.target.closest('.ks-opt-card'); if(!c||!current)return;
+  pushUndo(); current.config.orient=c.dataset.ori;
+  document.querySelectorAll('#oriOpts .ks-opt-card').forEach(x=>x.classList.toggle('active',x===c));
+  markDirtyUI(); scheduleSave();
+});
+$('iconInput').addEventListener('change',function(){
+  if(!current||!this.files||!this.files[0])return;
+  const f=this.files[0];
+  if(f.size>3*1024*1024){ toast('حجم الأيقونة يتجاوز 3MB','err'); this.value=''; return; }
+  const r=new FileReader();
+  r.onload=()=>{ pushUndo(); current.icon={dataUrl:r.result,name:f.name}; current.dirty=true;
+    const mi=$('mockIco'); mi.textContent=''; const img=document.createElement('img'); img.src=r.result; mi.appendChild(img);
+    markDirtyUI(); scheduleSave(); toast('تم تحديث الأيقونة','suc'); };
+  r.readAsDataURL(f);
+});
+function updateScore(){
+  if(!current)return; const c=current.config; let s=20;
+  if(c.bHttp)s+=15; if(c.dLock)s+=15; if(c.nCopy)s+=10; if(c.noCtx)s+=10;
+  if(c.aTamp)s+=15; if(c.sLogs)s+=10; if(current.url&&current.url.startsWith('https'))s+=5;
+  $('scoreVal').textContent=s+'%'; const sf=$('scoreFill'); sf.style.width=s+'%';
+  sf.style.background=s>=80?'#22c55e':s>=50?'#eab308':'#ef4444';
+}
+function updateOfflineCount(){
+  const t=$('offText').value||''; const kb=(new Blob([t]).size/1024).toFixed(1);
+  const lc=$('lineCount'); lc.textContent=`الحجم: ${kb} / 256KB`;
+  lc.style.color=kb>256?'#ef4444':'#888';
+}
+$('btnBackProjects').onclick=async()=>{ await doSaveNow(); renderProjects(); showView('projects'); };
+
+/* ================= new / dup / del / export / import ================= */
+$('btnNewProject').onclick=async()=>{
+  const p=newProject();
+  projects.push(p); await dbPut(p);
+  renderProjects(); openProject(p.id); toast('تم إنشاء مشروع جديد','suc');
+};
+function duplicateProject(p){
+  const c=JSON.parse(JSON.stringify(p));
+  c.id=uid(); c.internalName=(c.internalName||c.appName||'مشروع')+' (نسخة)';
+  c.status='DRAFT'; c.archived=false; c.lastBuildId=null; c.lastBuildStatus=null;
+  c.lastBuildAt=null; c.lastSuccessfulBuildAt=null; c.artifactState='none';
+  c.buildCount=0; c.lastErrorSummary=''; c.history=[]; c.revision=0;
+  c.createdAt=c.updatedAt=Date.now();
+  projects.push(c); dbPut(c); renderProjects(); toast('تم إنشاء نسخة مستقلة','suc');
+}
+async function deleteProject(p){
+  if(!confirm(`حذف "${p.appName||p.internalName}" نهائيًا من هذا المتصفح؟`))return;
+  if(!confirm('تأكيد أخير: لا يمكن التراجع عن الحذف المحلي.'))return;
+  if(ACTIVE_STATES.includes(p.lastBuildStatus)&&p.lastBuildId){
+    try{ await fetch('/cancel/'+p.lastBuildId,{method:'POST'}); }catch(e){}
+  }
+  await dbDel(p.id); projects=projects.filter(x=>x.id!==p.id);
+  if(current&&current.id===p.id){ current=null; showView('projects'); }
+  renderProjects(); toast('تم حذف المشروع','inf');
+}
+function exportProject(p){
+  const data={schemaVersion:SCHEMA,project:{...p,icon:p.icon},config:p.config,metadata:{exportedAt:new Date().toISOString(),builder:'webapk-builder',version:'2.0.0'}};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=(p.appName||'project').replace(/[^\w\u0600-\u06FF.-]+/g,'_')+'.webapk.json';
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('تم تصدير المشروع','suc');
+}
+$('btnPrevSite').onclick=()=>{
+  if(!current||!current.url)return toast('اكتب الرابط أولاً','err');
+  $('mockIframe').src='/preview/frame?url='+encodeURIComponent(current.url);
+};
+$('btnPrevOff').onclick=()=>{
+  const h=current&&current.config&&current.config.offlineHtml;
+  if(!h)return toast('لا يوجد كود Offline للمعاينة','inf');
+  const blob=new Blob([h],{type:'text/html'});
+  $('mockIframe').src=URL.createObjectURL(blob);
+};
+$('offFileInput').addEventListener('change',function(){
+  if(!this.files||!this.files[0])return;
+  const f=this.files[0];
+  if(f.size>256*1024){
+    toast('حجم ملف Offline يتجاوز 256KB','err');
+    this.value=''; return;
+  }
+  const reader=new FileReader();
+  reader.onload=()=>{
+    $('offText').value=reader.result;
+    bindChange($('offText'),reader.result);
+    toast('تم تحميل ملف Offline بنجاح','suc');
   };
-
-  try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + pass },
-      body: JSON.stringify(payload)
-    });
-    const r = await res.json();
-    if (r.ok) { toast("تم حفظ التعديلات في Supabase فوراً!"); loadConfig(); }
-    else alert("خطأ: " + (r.error || "فشل الحفظ"));
-  } catch (e) { alert("تعذر الاتصال بالخادم"); }
+  reader.readAsText(f);
+});
+$('btnDelOff').onclick=()=>{
+  if(confirm('هل تريد حذف صفحة Offline المخصصة؟')){
+    $('offText').value='';
+    bindChange($('offText'),'');
+    $('offFileInput').value='';
+    toast('تم حذف صفحة Offline','inf');
+  }
 };
 
-document.getElementById("btnSendPush").onclick = async () => {
-  const pass = document.getElementById("pass").value.trim();
-  if (!pass) return alert("اكتب كلمة مرور المسؤول أولاً!");
-  const title = document.getElementById("pushTitle").value.trim();
-  const message = document.getElementById("pushMsg").value.trim();
-  const url = document.getElementById("pushUrl").value.trim();
-  const img = document.getElementById("imgUrl").value.trim();
-  if (!title || !message) return alert("اكتب عنوان ونص الإشعار!");
+/* ================= security score / offline count init ================= */
+updateScore();
 
-  try {
-    const res = await fetch(API_URL + "?action=push", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + pass },
-      body: JSON.stringify({ title, message, url, img_url: img.startsWith("http") ? img : undefined })
+/* ================= audit ================= */
+$('btnAudit').onclick=async()=>{
+  if(!current)return;
+  const u=(current.url||'').trim();
+  if(!u){ toast('اكتب رابط الموقع أولاً','err'); return; }
+  const box=$('diagBox'); box.style.display='block'; box.textContent='جاري فحص الموقع…';
+  try{
+    const fd=new FormData(); fd.append('url',u);
+    const r=await fetch('/audit-url',{method:'POST',body:fd});
+    const d=await r.json();
+    box.textContent='';
+    if(!d.ok){ box.appendChild(el('div',null,'خطأ: '+(d.error||'تعذر الفحص'))); toast('تعذر فحص الموقع','err'); return; }
+    const mk=(k,v)=>{ const row=el('div'); row.appendChild(el('b',null,k+' ')); row.appendChild(el('span',null,v)); box.appendChild(row); };
+    mk('التوافق:',d.score+'/100');
+    mk('الاستجابة:',`${d.ms} ms — HTTP ${d.status}`);
+    mk('HTTPS:',d.is_https?'مشفّر':'غير مشفّر');
+    if(d.title)mk('العنوان:',d.title);
+    mk('PWA:',(d.pwa?'manifest ✓':'لا')+' / ServiceWorker: '+(d.service_worker?'✓':'لا'));
+    (d.notes||[]).forEach(n=>box.appendChild(el('div',null,'⚠ '+n)));
+    toast('اكتمل الفحص','suc');
+  }catch(e){ box.textContent='فشل الاتصال بخدمة الفحص'; }
+};
+
+/* ================= build ================= */
+function validateBuild(p){
+  if(!p.appName||!p.appName.trim())return 'اكتب اسم التطبيق';
+  if(!p.url||!/^https?:\/\/[^\s]+\.[^\s]{2,}/i.test(p.url))return 'رابط الموقع غير صالح (مثال: https://example.com)';
+  if(!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test((p.packageName||'').trim()))return 'اسم الحزمة غير صالح — مثال: com.example.app';
+  return null;
+}
+function resetBuildPanels(){
+  $('statusBox').classList.remove('show'); $('errBox').classList.remove('show');
+  $('downloadBox').style.display='none'; $('queueBox').classList.remove('show');
+  $('term').textContent=''; $('stageList').textContent='';
+  $('buildTiming').textContent=''; $('cancelBtn').style.display='none'; $('aiBtn').style.display='none';
+  const bb=$('buildButton'); bb.disabled=false; bb.textContent='إنشاء APK';
+  $('progressBar').style.width='0%';
+}
+async function buildFormData(){
+  const p=current,c=p.config,fd=new FormData();
+  fd.append('app_name',p.appName.trim()); fd.append('url',p.url.trim());
+  fd.append('package_name',(p.packageName||'com.webapp.app').trim());
+  fd.append('d_lock',c.dLock); fd.append('b_http',c.bHttp); fd.append('n_copy',c.nCopy);
+  fd.append('no_ctx',c.noCtx); fd.append('a_tamp',c.aTamp); fd.append('s_logs',c.sLogs);
+  fd.append('orient',c.orient); fd.append('f_screen',c.fScreen);
+  fd.append('c_ua',c.cUa||''); fd.append('ex_domains',c.exDomains||'');
+  fd.append('d_back',c.dBack); fd.append('p_bar',c.pBar); fd.append('t_bar',c.tBar);
+  fd.append('dom_storage',c.domStorage); fd.append('web_zoom',c.webZoom);
+  fd.append('open_intents',c.openIntents);
+  fd.append('perm_cam',!!c.permCam);
+  fd.append('perm_mic',!!c.permMic);
+  fd.append('perm_loc',!!c.permLoc);
+  fd.append('dl_mgr',c.dlMgr!==false);
+  fd.append('text_zoom',c.textZoom||100);
+  fd.append('sb_col',c.sbCol||'#000000');
+  fd.append('nb_col',c.nbCol||'#000000');
+  fd.append('keep_screen',!!c.keepScreen);
+  fd.append('theme_mode',c.themeMode||'auto');
+  fd.append('remote_url',c.remoteUrl||'');
+  fd.append('onesignal_id',c.onesignalId||'');
+  fd.append('remote_script',c.remoteScript||'');
+  fd.append(
+    'version_code',
+    parseInt(c.versionCode)||1
+  );
+  fd.append(
+    'version_name',
+    c.versionName||'1.0'
+  );
+  fd.append('project_id',p.id); fd.append('idempotency_key',`${p.id}:r${p.revision||0}:${++clickSeq}`);
+  if(c.offlineHtml)fd.append('off_html',c.offlineHtml);
+  if(p.icon&&p.icon.dataUrl){
+    const blob=await (await fetch(p.icon.dataUrl)).blob();
+    fd.append('app_icon',blob,p.icon.name||'icon.png');
+  }
+  return fd;
+}
+async function startBuild(){
+  if(!current)return;
+  await doSaveNow();
+  const err=validateBuild(current);
+  if(err){ toast(err,'err'); return; }
+  const bb=$('buildButton'); if(bb.disabled)return;
+  bb.disabled=true; bb.textContent='جارٍ الإرسال…';
+  $('errBox').classList.remove('show'); $('downloadBox').style.display='none';
+  try{
+    const fd=await buildFormData();
+    const r=await fetch('/build',{
+      method:'POST',
+      headers:{'X-Session-ID':clientSid},
+      body:fd
     });
-    const r = await res.json();
-    if (r.ok) {
-      toast(`تم إرسال الإشعار بنجاح إلى ${r.recipients} هاتف!`);
-      document.getElementById("pushTitle").value = "";
-      document.getElementById("pushMsg").value = "";
-    } else {
-      alert("خطأ أثناء الإرسال: " + r.error);
+    const d=await r.json();
+    if(!d.ok){ bb.disabled=false; bb.textContent='إنشاء APK'; toast(d.error||'تعذر البدء','err'); return; }
+    if(d.already_built)toast('هذا الإصدار مبني بالفعل — تم إرجاع النتيجة','inf');
+    if(d.duplicate)toast('يوجد بناء مطابق جارٍ — تم الربط به','inf');
+    current.lastBuildId=d.job_id; current.lastBuildStatus='QUEUED'; current.lastBuildAt=Date.now();
+    current.buildCount=(current.buildCount||0)+1; current.status='QUEUED'; current.artifactState='none';
+    current.history.unshift({jobId:d.job_id,at:Date.now(),status:'QUEUED',version:current.config.versionName});
+    if(current.history.length>20)current.history.length=20;
+    current.revision=(current.revision||0)+1; await dbPut(current);
+    renderProjects(); trackJob(d.job_id,current.id,false);
+  }catch(e){ bb.disabled=false; bb.textContent='إنشاء APK'; toast('تعذر الاتصال بالخادم','err'); }
+}
+
+/* ================= tracking (status + SSE + fallback) ================= */
+function stopTracking(){
+  if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
+  if(evtSrc){evtSrc.close();evtSrc=null;}
+  trackingJob=null; trackProjectId=null;
+}
+function setStageUI(d){
+  const order=['QUEUED','PREPARING','GENERATING','VALIDATING','BUILDING','VERIFYING','PACKAGING','COMPLETED'];
+  const list=$('stageList'); list.textContent='';
+  const cur=order.indexOf(d.state);
+  order.forEach((s,i)=>{
+    if(s==='COMPLETED'&&d.state!=='COMPLETED')return;
+    const row=el('div','stage-item');
+    const ic=el('span',null);
+    if(i<cur||d.state==='COMPLETED'){ ic.innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#4ade80" stroke-width="2.5"><path d="M9 12l2 2 4-4"/></svg>'; }
+    else if(i===cur){ const sp=el('span','s-spin'); ic.appendChild(sp); }
+    else { ic.innerHTML='<svg viewBox="0 0 24 24" width="11" height="11" fill="#666"><circle cx="12" cy="12" r="4"/></svg>'; }
+    row.appendChild(ic); row.appendChild(el('span',null,STAGE_AR[s]||s));
+    list.appendChild(row);
+  });
+}
+function addLog(text){
+  const t=$('term'); const d=el('div',null,text);
+  if(text.includes('FAILED')||text.includes('ERROR')||text.includes('CRASH'))d.className='t-err';
+  else if(text.includes('WARN'))d.className='t-war';
+  else if(text.includes('BUILD SUCCESSFUL')||text.includes('COMPLETED'))d.className='t-suc';
+  else if(text.startsWith('[AI'))d.className='t-ai';
+  else d.className='t-inf';
+  t.appendChild(d); t.scrollTop=t.scrollHeight;
+}
+function connectStream(jobId){
+  if(evtSrc)return;
+  try{ evtSrc=new EventSource('/stream/'+jobId); }catch(e){ return; }
+  evtSrc.onmessage=e=>{
+    const m=e.data;
+    const tm=m.match(/^\[ (COMPLETED|FAILED|CANCELLED|EXPIRED|INTERRUPTED) \]$/);
+    if(tm){ const es=evtSrc; evtSrc=null; es.close(); tick(); return; }
+    try{ addLog(JSON.parse(m)); }catch(err){ addLog(m); }
+  };
+  evtSrc.onerror=()=>{ if(evtSrc){evtSrc.close();evtSrc=null;} };
+}
+async function tick(){
+  if(!trackingJob)return;
+  let d;
+  try{
+    const r=await fetch(
+      '/status/'+trackingJob,
+      {headers:{'X-Session-ID':clientSid}}
+    );
+    d=await r.json();
+  }catch(e){ return; }
+  if(!d||!d.ok)return;
+  updateFromStatus(d);
+  if(ACTIVE_STATES.includes(d.state)){
+    if(['PREPARING','GENERATING','VALIDATING','BUILDING','VERIFYING','PACKAGING'].includes(d.state))connectStream(trackingJob);
+    const bb=$('buildButton');
+    if(d.state==='QUEUED'){ bb.disabled=true; bb.textContent='في الطابور…';
+      $('queueBox').classList.add('show');
+      $('queueBox').textContent=d.queue_position?`أنت رقم ${d.queue_position} في الطابور — الانتظار المتوقع: ${d.estimated_wait||'غير معروف'}`:'أنت في الطابور…';
+    } else { $('queueBox').classList.remove('show'); bb.disabled=true; bb.textContent='جاري البناء…'; }
+  } else finalize(d);
+}
+function updateFromStatus(d){
+  $('statusBox').classList.add('show');
+  $('statusTitle').textContent='حالة البناء: '+(STAGE_AR[d.state]||d.state);
+  $('statusText').textContent=d.stage?('المرحلة الحالية: '+(STAGE_AR[d.stage]||d.stage)):'';
+  $('progressBar').style.width=(d.progress||0)+'%';
+  $('cancelBtn').style.display=d.state==='QUEUED'||d.stage==='BUILDING'||d.state==='BUILDING'?'block':'none';
+  setStageUI(d);
+  if(d.status==='queued'&&d.queue_position){ $('queueBox').classList.add('show');
+    $('queueBox').textContent=`أنت رقم ${d.queue_position} في الطابور — الانتظار المتوقع: ${d.estimated_wait||'غير معروف'}`; }
+  else if(d.state!=='QUEUED') $('queueBox').classList.remove('show');
+}
+async function finalize(d){
+  const p=projects.find(x=>x.id===trackProjectId);
+  if(p){
+    p.lastBuildStatus=d.state; p.lastBuildAt=Date.now();
+    p.status=d.state==='COMPLETED'?'COMPLETED':(d.state==='CANCELLED'?'CANCELLED':(d.state==='EXPIRED'?'EXPIRED':'FAILED'));
+    const h=p.history.find(x=>x.jobId===trackingJob);
+    if(h)h.status=d.state;
+    if(d.state==='COMPLETED'){
+      p.lastSuccessfulBuildAt=Date.now();
+      p.artifactState=d.artifact_available?'available':'expired';
+      if(h&&d.artifact){h.size=d.artifact.size;h.ms=d.timings&&d.timings.gradle;}
+      if(d.timings)$('buildTiming').textContent='Gradle: '+fmtDur(d.timings.gradle||0)+' — الإجمالي: '+fmtDur((d.timings.gradle||0)+ (d.timings.prepare||0)+(d.timings.generate||0)+(d.timings.verify||0));
     }
-  } catch(e) { alert("تعذر الاتصال بالسيرفر"); }
+    if(d.state==='FAILED'){ p.artifactState='none'; p.lastErrorSummary=d.error_message||''; }
+    if(d.state==='EXPIRED')p.artifactState='expired';
+    p.revision=(p.revision||0)+1; await dbPut(p);
+    if(current&&current.id===p.id){ current=p; }
+  }
+  renderProjects();
+  const bb=$('buildButton'); bb.disabled=false; bb.textContent='إنشاء APK';
+  $('cancelBtn').style.display='none'; $('queueBox').classList.remove('show');
+  updateFromStatus(d);
+  if(d.state==='COMPLETED'){
+    $('statusTitle').textContent='تم إنشاء APK بنجاح';
+    $('statusText').textContent='التطبيق جاهز للتحميل. يبقى الملف على الخادم لمدة محدودة ثم يمكنك إعادة البناء في أي وقت.';
+    if(d.download){ $('downloadLink').href=d.download; $('downloadBox').style.display='block'; }
+    toast('اكتمل البناء بنجاح','suc');
+  } else if(d.state==='FAILED'){
+    $('errBox').classList.add('show');
+    $('errStage').textContent=STAGE_AR[d.stage]||d.stage||'—';
+    $('errCode').textContent=d.error_code||'UNKNOWN';
+    $('errMsg').textContent=d.error_message||d.error_summary||'—';
+    $('errDiag').textContent=d.diagnostic_id||'—';
+    $('errAi').textContent=d.ai_hint||'';
+    $('aiBtn').style.display='block';
+    toast('فشل البناء — التفاصيل بالأسفل','err');
+  } else {
+    toast(d.state==='CANCELLED'?'تم إلغاء البناء':'توقف البناء ('+(STAGE_AR[d.state]||d.state)+')','inf');
+  }
+  stopTracking();
+}
+function trackJob(jobId,projectId,resumed){
+  stopTracking();
+  trackingJob=jobId; trackProjectId=projectId;
+  const bb=$('buildButton'); bb.disabled=true; bb.textContent=resumed?'استئناف المتابعة…':'جاري البناء…';
+  $('statusBox').classList.add('show');
+  $('term').textContent='';
+  tick();
+  pollTimer=setInterval(tick,2500);
+}
+$('buildButton').onclick=startBuild;
+$('cancelBtn').onclick=async()=>{
+  if(!trackingJob)return;
+  if(!confirm('إلغاء هذا البناء؟'))return;
+  try{ await fetch('/cancel/'+trackingJob,{method:'POST'}); toast('تم طلب الإلغاء','inf'); }catch(e){}
+};
+$('aiBtn').onclick=async()=>{
+  if(!trackingJob&&!current)return;
+  const jobId=trackingJob||current.lastBuildId; if(!jobId)return;
+  const fd=new FormData(); fd.append('job_id',jobId);
+  toast('جاري التحليل…','inf');
+  try{
+    const r=await fetch('/ai/analyze',{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.ok){ $('errAi').textContent='الذكاء الاصطناعي: '+d.hint; toast('اكتمل التحليل','suc'); }
+    else toast(d.error||'تعذر التحليل','err');
+  }catch(e){ toast('تعذر الاتصال','err'); }
+};
+$('btnRetry').onclick=()=>startBuild();
+$('btnErrLogs').onclick=()=>{ $('term').scrollIntoView({behavior:'smooth'}); };
+$('btnErrCopy').onclick=()=>{
+  const txt=`تشخيص: ${$('errDiag').textContent}\nالمرحلة: ${$('errStage').textContent}\nالتصنيف: ${$('errCode').textContent}\nالسبب: ${$('errMsg').textContent}`;
+  navigator.clipboard.writeText(txt).then(()=>toast('تم النسخ','suc')).catch(()=>toast('تعذر النسخ','err'));
+};
+$('btnCopyLogs').onclick=async()=>{
+  const txt=$('term').innerText;
+  if(!txt.trim()){ toast('لا توجد سجلات','inf'); return; }
+  try{ await navigator.clipboard.writeText(txt.slice(-50000)); toast('تم نسخ السجلات','suc'); }catch(e){ toast('تعذر النسخ','err'); }
 };
 
-// تم إلغاء كود الذكاء الاصطناعي بنجاح
+async function refreshJobInfo(jobId){
+  try{ const r=await fetch('/status/'+jobId); const d=await r.json();
+    if(d.ok&&d.state==='COMPLETED'&&current&&current.id===trackProjectId){ /* nothing */ }
+    if(d.ok&&d.state&&current){
+      current.lastBuildStatus=d.state;
+      if(d.artifact_available){ current.artifactState='available';
+        $('downloadLink').href=d.download; }
+    }
+  }catch(e){}
+}
 
-loadConfig();
-loadStatsAndVersions();
+/* ================= queue view ================= */
+async function renderQueue(){
+  const list=$('queueList'); list.textContent='';
+  const actives=projects.filter(p=>ACTIVE_STATES.includes(p.lastBuildStatus)&&p.lastBuildId);
+  $('queueEmpty').style.display=actives.length?'none':'block';
+  $('queueBadge').style.display=actives.length?'inline-block':'none';
+  $('queueBadge').textContent=actives.length;
+  for(const p of actives){
+    const item=el('div','queue-item');
+    item.appendChild(el('span','qi-name',p.appName||p.internalName||'مشروع'));
+    try{
+      const r=await fetch('/status/'+p.lastBuildId); const d=await r.json();
+      item.appendChild(el('span','chip '+(CHIP[d.state]||CHIP.DRAFT).cls,(CHIP[d.state]||{label:d.state||'…'}).label));
+      item.appendChild(el('span','qi-meta', d.queue_position?`الموقع: ${d.queue_position} — ${d.estimated_wait||''}`:(STAGE_AR[d.stage]||'')));
+      if(!d.ok||!ACTIVE_STATES.includes(d.state)){
+        p.lastBuildStatus=d.state||'INTERRUPTED'; p.status=p.lastBuildStatus==='COMPLETED'?'COMPLETED':'FAILED';
+        await dbPut(p);
+      }
+    }catch(e){ item.appendChild(el('span','qi-meta','تعذر الاتصال')); }
+    const open=el('button','btn btn-sm','فتح'); open.onclick=()=>openProject(p.id);
+    const cancel=el('button','btn btn-sm btn-dan','إلغاء');
+    cancel.onclick=async()=>{ try{ await fetch('/cancel/'+p.lastBuildId,{method:'POST'}); p.lastBuildStatus='CANCELLED'; p.status='CANCELLED'; await dbPut(p); renderQueue(); renderProjects(); }catch(e){} };
+    item.appendChild(open); item.appendChild(cancel);
+    list.appendChild(item);
+  }
+  try{
+    const r=await fetch('/capabilities'); const d=await r.json();
+    if(d.ok){ $('capsBox').textContent='';
+      const mk=(k,v)=>{ const row=el('div'); row.appendChild(el('b',null,k+': ')); row.appendChild(el('span',null,v)); $('capsBox').appendChild(row); };
+      mk('إصدار الباني',d.builder_version); mk('متغيرات البناء',d.variants.join(', '));
+      mk('SDK','compile '+d.toolchain.compile_sdk+' / target '+d.toolchain.target_sdk+' / min '+d.toolchain.min_sdk);
+      mk('الحدود',`أيقونة ${fmtBytes(d.limits.max_icon_bytes)} · أوفلاين ${fmtBytes(d.limits.max_offline_bytes)} · طابور ${d.limits.max_queue} · مهلة ${Math.round(d.limits.max_build_seconds/60)} د`);
+      mk('ميزات','شريط علوي: '+(d.features.top_bar?'✓':'✗')+' · قفل نطاق: '+(d.features.domain_lock?'✓':'✗')+' · Release/AAB: قيد التطوير');
+    }
+  }catch(e){}
+}
 
+/* ================= keystore ================= */
+$('btnGenKey').onclick=async()=>{
+  const fd=new FormData();
+  fd.append('alias',$('ksAlias').value||'appkey');
+  fd.append('password',$('ksPass').value||'');
+  fd.append('cn',$('ksCN').value||'Dev');
+  fd.append('org',$('ksOrg').value||'Org');
+  if(!$('ksPass').value){ toast('اكتب كلمة مرور للمفتاح أولاً (6+ أحرف) — لن نخزنها','err'); return; }
+  toast('جاري إنشاء المفتاح…','inf');
+  try{
+    const r=await fetch('/keystore/generate',{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.ok){ toast('تم إنشاء Keystore — احتفظ به وكلمة المرور بأمان!','suc'); window.open(d.download,'_blank'); }
+    else toast(d.error||'فشل الإنشاء','err');
+  }catch(e){ toast('تعذر الاتصال','err'); }
+};
+
+/* ================= health / connectivity ================= */
+async function pingHealth(){
+  let on=navigator.onLine; let ok=false;
+  if(on){ try{ const c=new AbortController(); const to=setTimeout(()=>c.abort(),5000);
+    const r=await fetch('/healthz',{signal:c.signal}); clearTimeout(to); ok=r.ok;
+    if(ok){ const d=await r.json(); const n=(d.queue_depth||0)+(d.active_jobs||0);
+      $('queueBadge').style.display=n?'inline-block':'none'; $('queueBadge').textContent=n; } }catch(e){ ok=false; } }
+  const dot=$('healthDot');
+  dot.className='hdot '+(ok?'on':(on?'slow':'off'));
+  $('offlineBar').classList.toggle('show',!ok);
+  const bb=$('buildButton');
+  if(!ok){ bb.disabled=true; }
+  else if(trackingJob){ bb.disabled=true; }
+  else if(current&&ACTIVE_STATES.includes(current.lastBuildStatus)){ bb.disabled=true; }
+  else { bb.disabled=false; }
+}
+setInterval(pingHealth,30000);
+window.addEventListener('online',pingHealth);
+window.addEventListener('offline',()=>{ $('healthDot').className='hdot off'; $('offlineBar').classList.add('show'); });
+
+/* ================= mode toggle ================= */
+const modePref=localStorage.getItem('webapk_mode')||'simple';
+$('modeToggle').checked=modePref==='advanced';
+document.body.classList.toggle('simple',modePref!=='advanced');
+$('modeToggle').onchange=function(){
+  const m=this.checked?'advanced':'simple';
+  localStorage.setItem('webapk_mode',m);
+  document.body.classList.toggle('simple',m!=='advanced');
+};
+
+/* ================= resume after refresh ================= */
+async function resumeBuilds(){
+  for(const p of projects){
+    if(ACTIVE_STATES.includes(p.lastBuildStatus)&&p.lastBuildId){
+      try{
+        const r=await fetch('/status/'+p.lastBuildId); const d=await r.json();
+        if(d.ok){
+          p.lastBuildStatus=d.state;
+          if(d.state==='COMPLETED'){ p.status='COMPLETED'; p.artifactState=d.artifact_available?'available':'expired'; p.lastSuccessfulBuildAt=Date.now(); }
+          else if(!ACTIVE_STATES.includes(d.state)){ p.status=d.state==='FAILED'?'FAILED':(d.state==='CANCELLED'?'CANCELLED':'FAILED'); p.lastErrorSummary=d.error_message||''; }
+          await dbPut(p);
+        } else { p.lastBuildStatus='INTERRUPTED'; p.status='FAILED'; await dbPut(p); }
+      }catch(e){}
+    }
+  }
+  renderProjects();
+}
+
+/* ================= lifecycle ================= */
+window.addEventListener('beforeunload',()=>{ if(current&&dirty)dbPut(current); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden)doSaveNow(); });
+document.addEventListener('keydown',e=>{
+  if($('view-editor').hidden)return;
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){ e.preventDefault(); $('btnUndo').click(); }
+  if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){ e.preventDefault(); $('btnRedo').click(); }
+});
+
+(async function init(){
+  try{ db=await openDB(); }catch(e){ toast('تعذر فتح التخزين المحلي (IndexedDB)','err'); return; }
+  projects=(await dbAll()).map(migrate);
+  renderProjects(); pingHealth(); resumeBuilds();
+  if(projects.length)showView('projects');
+  else { const p=newProject(); projects.push(p); await dbPut(p); renderProjects(); openProject(p.id); }
+})();
 </script>
 </body>
 </html>
