@@ -198,6 +198,44 @@ button:hover { background: #e5e5e5; }
     <input type="text" id="updMsg" value="يرجى تنزيل الإصدار الأخير لمواصلة الاستخدام.">
   </div>
 
+  <!-- نطاق إصدارات أندرويد المدعومة -->
+  <div class="card" style="border-color:#334155;">
+    <div class="card-title" style="color:#94a3b8;">
+      <span>📱 نطاق إصدارات أندرويد المدعومة (Android OS Support Range)</span>
+      <span style="font-size:10px;color:#64748b;">تحديد التوافق</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div>
+        <label>الحد الأدنى لنظام أندرويد</label>
+        <select id="minAndroidApi">
+          <option value="0">بلا حد أدنى (الكل مدعوم)</option>
+          <option value="26">Android 8.0 Oreo (API 26)</option>
+          <option value="27">Android 8.1 Oreo (API 27)</option>
+          <option value="28">Android 9 Pie (API 28)</option>
+          <option value="29">Android 10 Q (API 29)</option>
+          <option value="30">Android 11 R (API 30)</option>
+          <option value="31">Android 12 S (API 31)</option>
+          <option value="33">Android 13 T (API 33)</option>
+          <option value="34">Android 14 U (API 34)</option>
+          <option value="35">Android 15 V (API 35)</option>
+        </select>
+      </div>
+      <div>
+        <label>الحد الأقصى لنظام أندرويد</label>
+        <select id="maxAndroidApi">
+          <option value="0">بلا حد أقصى (يدعم أحدث الأنظمة)</option>
+          <option value="31">Android 12 (API 31)</option>
+          <option value="33">Android 13 (API 33)</option>
+          <option value="34">Android 14 (API 34)</option>
+          <option value="35">Android 15 (API 35)</option>
+          <option value="36">Android 16 (API 36)</option>
+        </select>
+      </div>
+    </div>
+    <label style="margin-top:8px;">رسالة الخطأ للهواتف غير المدعومة</label>
+    <input type="text" id="unsupportedOsMsg" value="نظام أندرويد المثبت على هاتفك غير مدعوم لهذا التطبيق.">
+  </div>
+
   <!-- مركز التحكم بالإعلانات الذكي (Smart Announcement Center) -->
   <div class="card" style="border-color:#1e293b;">
     <div class="card-title" style="color:#38bdf8;">
@@ -569,6 +607,9 @@ async function loadConfig() {
     document.getElementById("minVer").value = data.min_version || 1;
     document.getElementById("updateUrl").value = data.update_url || "";
     document.getElementById("updMsg").value = data.upd_msg || "";
+    document.getElementById("minAndroidApi").value = data.min_android_api || 0;
+    document.getElementById("maxAndroidApi").value = data.max_android_api || 0;
+    document.getElementById("unsupportedOsMsg").value = data.unsupported_os_msg || "نظام أندرويد المثبت على هاتفك غير مدعوم لهذا التطبيق.";
     document.getElementById("msgActive").checked = !!data.msg_active;
     document.getElementById("msgTargetAudience").value = data.msg_target_audience || "all";
     document.getElementById("customDevsBox").style.display = (data.msg_target_audience === "custom") ? "block" : "none";
@@ -639,6 +680,9 @@ document.getElementById("btnSave").onclick = async () => {
     min_version: parseInt(document.getElementById("minVer").value) || 1,
     update_url: document.getElementById("updateUrl").value,
     upd_msg: document.getElementById("updMsg").value,
+    min_android_api: parseInt(document.getElementById("minAndroidApi").value) || 0,
+    max_android_api: parseInt(document.getElementById("maxAndroidApi").value) || 0,
+    unsupported_os_msg: document.getElementById("unsupportedOsMsg").value,
     msg_active: document.getElementById("msgActive").checked,
     msg_target_audience: document.getElementById("msgTargetAudience").value,
     msg_target_devices: document.getElementById("msgTargetDevices").value.split(",").map(x => x.trim()).filter(Boolean),
