@@ -123,6 +123,9 @@ export default async function handler(req, res) {
       msg_expires_at: 0,
       msg_target_audience: "all",
       msg_target_devices: [],
+      min_android_api: 0,
+      max_android_api: 0,
+      unsupported_os_msg: "نظام أندرويد في هاتفك غير مدعوم حالياً لهذا التطبيق.",
       img_url: "",
       remote_js: ""
     };
